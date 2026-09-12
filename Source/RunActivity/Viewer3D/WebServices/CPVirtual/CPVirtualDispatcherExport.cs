@@ -119,6 +119,8 @@ namespace Orts.Viewer3D.WebServices
         public string PostId;
         public string Channel;
         public string Group;
+        public int SourceDestinationIdentifier;
+        public int MessageIdentifier;
         public string Kind;
         public string Text;
     }
@@ -133,6 +135,9 @@ namespace Orts.Viewer3D.WebServices
         public string PostId;
         public string Channel;
         public string Group;
+        public int SourceDestinationIdentifier;
+        public int MessageIdentifier;
+        public int AcknowledgementCause;
         public string Kind;
         public string Text;
     }
@@ -142,6 +147,7 @@ namespace Orts.Viewer3D.WebServices
         public bool Accepted;
         public string Message;
         public long MessageId;
+        public int AcknowledgementCause;
     }
 
     public sealed class CPVirtualCommand
@@ -180,12 +186,38 @@ namespace Orts.Viewer3D.WebServices
                 return new List<CPVirtualRadioMessage>(radioMessages);
         }
 
+        private static bool IsKnownStatusMessage(int sourceDestination, int identifier)
+        {
+            if (sourceDestination == 0 && identifier == 0)
+                return true; // CP Virtual free-text extension.
+            if (identifier < 1 || identifier > 255)
+                return false;
+            if (sourceDestination == 1)
+                return identifier == 1 || identifier == 2 || identifier == 3 || identifier == 4 ||
+                    identifier == 5 || identifier == 6 || identifier == 7 || identifier == 8 ||
+                    identifier == 14 || identifier == 15 || identifier == 16;
+            if (sourceDestination == 2)
+                return identifier >= 1 && identifier <= 16;
+            if (sourceDestination == 3)
+                return identifier >= 1 && identifier <= 10;
+            if (sourceDestination == 4)
+                return identifier >= 1 && identifier <= 8;
+            return false;
+        }
+
         public static CPVirtualRadioResult SendRadio(CPVirtualRadioRequest request)
         {
-            var result = new CPVirtualRadioResult { Accepted = false, Message = "Mensagem inválida." };
+            var result = new CPVirtualRadioResult { Accepted = false, Message = "Mensagem inválida.", AcknowledgementCause = 3 };
             if (request == null || String.IsNullOrWhiteSpace(request.FromRole) ||
                 String.IsNullOrWhiteSpace(request.FromName) || String.IsNullOrWhiteSpace(request.Text))
                 return result;
+
+            if (!IsKnownStatusMessage(request.SourceDestinationIdentifier, request.MessageIdentifier))
+            {
+                result.Message = "Mensagem predefinida desconhecida.";
+                result.AcknowledgementCause = 1;
+                return result;
+            }
 
             var message = new CPVirtualRadioMessage
             {
@@ -197,6 +229,9 @@ namespace Orts.Viewer3D.WebServices
                 PostId = request.PostId == null ? String.Empty : request.PostId.Trim(),
                 Channel = request.Channel == null ? String.Empty : request.Channel.Trim(),
                 Group = String.IsNullOrWhiteSpace(request.Group) ? "GR" : request.Group.Trim(),
+                SourceDestinationIdentifier = request.SourceDestinationIdentifier,
+                MessageIdentifier = request.MessageIdentifier,
+                AcknowledgementCause = 0,
                 Kind = String.IsNullOrWhiteSpace(request.Kind) ? "radio" : request.Kind.Trim(),
                 Text = request.Text.Trim()
             };
@@ -211,6 +246,7 @@ namespace Orts.Viewer3D.WebServices
             result.Accepted = true;
             result.Message = "Mensagem transmitida.";
             result.MessageId = message.MessageId;
+            result.AcknowledgementCause = 0;
             return result;
         }
 

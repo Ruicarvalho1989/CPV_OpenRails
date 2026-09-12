@@ -412,10 +412,16 @@ namespace Orts.Viewer3D.WebServices
 
         private static LatLon SignalLocation(SignalObject signal)
         {
-            if (SignalObject.trItems == null || signal.thisRef < 0 || signal.thisRef >= SignalObject.trItems.Length)
+            // thisRef indexes SignalObjects, not the TDB track items. A signal can
+            // contain several heads; the first head provides a stable TDB location.
+            if (SignalObject.trItems == null || signal.SignalHeads == null || signal.SignalHeads.Count == 0)
                 return null;
 
-            var item = SignalObject.trItems[signal.thisRef];
+            var trackItemIndex = signal.SignalHeads[0].TDBIndex;
+            if (trackItemIndex < 0 || trackItemIndex >= SignalObject.trItems.Length)
+                return null;
+
+            var item = SignalObject.trItems[trackItemIndex];
             return item == null ? null : InfoApiMap.ConvertToLatLon(item.TileX, item.TileZ, item.X, item.Y, item.Z);
         }
 

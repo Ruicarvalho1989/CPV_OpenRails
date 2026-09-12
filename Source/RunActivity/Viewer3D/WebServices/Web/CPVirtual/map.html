@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CP Virtual · Mapa real Portugal79</title>
+<style>
+:root{font-family:"Segoe UI",Arial,sans-serif;color:#e8eef1;background:#0d1215}*{box-sizing:border-box}body{margin:0;padding:18px}.bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.brand{font-weight:700}.brand b{color:#df262d;font-size:22px;font-style:italic}.ok{color:#8ee2ad}.bad{color:#ff7479}.card{border:1px solid #364046;background:#171e22;border-radius:9px;padding:14px}.map-wrap{position:relative;overflow:auto;background:#080d10;border-radius:6px;margin-top:12px}canvas{display:block;width:100%;height:auto;min-height:520px}.note{font-size:12px;color:#aab3b9;line-height:1.5}.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:#c6d0d5}.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}.stations{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.station{border:1px solid #455158;border-radius:14px;padding:4px 8px;font-size:11px;color:#d6e0e5}
+</style>
+</head>
+<body>
+<div class="bar"><div class="brand"><b>CP</b> VIRTUAL · MAPA REAL DA ROTA</div><div id="status">A carregar geometria…</div></div>
+<section class="card">
+  <div class="legend"><span><i style="background:#89979e"></i>via real</span><span><i style="background:#df262d"></i>estações de referência</span><span><i style="background:#8ee2ad"></i>posição do comboio</span></div>
+  <div class="map-wrap"><canvas id="map" width="1800" height="820"></canvas></div>
+  <div id="stations" class="stations"></div>
+  <p class="note">Este é um mapa geográfico da topologia carregada pelo Open Rails. É a referência para construir o posto esquemático; o painel de comando final será uma versão simplificada, horizontal e legível, não uma cópia deste mapa.</p>
+</section>
+<script>
+const canvas=document.getElementById('map'),ctx=canvas.getContext('2d'),statusEl=document.getElementById('status');
+const stationNames=['Alfarelos','Formoselha','Pereira do Campo','Amial','Vila Pouca','Taveiro','Casais','Espadaneira','Bencanta','Coimbra-B'];
+let mapData=null,player=null;
+const text=v=>v===null||v===undefined?'':String(v);
+function toCanvas(latLon){
+  const margin=55,w=canvas.width-margin*2,h=canvas.height-margin*2;
+  const lon=Math.max(mapData.LonMin,Math.min(mapData.LonMax,latLon.Lon));
+  const lat=Math.max(mapData.LatMin,Math.min(mapData.LatMax,latLon.Lat));
+  return {x:margin+(lon-mapData.LonMin)/(mapData.LonMax-mapData.LonMin)*w,y:canvas.height-margin-(lat-mapData.LatMin)/(mapData.LatMax-mapData.LatMin)*h};
+}
+function namedStations(){
+  const points=mapData.PointOnApiMapList||[];
+  return points.filter(point=>{
+    const name=text(point.Name).toLowerCase();
+    return stationNames.some(station=>name.includes(station.toLowerCase()));
+  });
+}
+function draw(){
+  if(!mapData)return;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle='#080d10';ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.strokeStyle='#7f8c92';ctx.lineWidth=1.2;ctx.beginPath();
+  for(const line of (mapData.LineOnApiMapList||[])){
+    if(!line.LatLonFrom||!line.LatLonTo)continue;
+    const a=toCanvas(line.LatLonFrom),b=toCanvas(line.LatLonTo);
+    ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
+  }
+  ctx.stroke();
+  ctx.font='13px Segoe UI';ctx.textBaseline='bottom';
+  for(const point of namedStations()){
+    if(!point.LatLon)continue;
+    const p=toCanvas(point.LatLon);
+    ctx.fillStyle='#df262d';ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#f1f4f5';ctx.fillText(text(point.Name),p.x+7,p.y-6);
+  }
+  if(player&&player.LatLon){
+    const p=toCanvas(player.LatLon);
+    ctx.fillStyle='#8ee2ad';ctx.beginPath();ctx.arc(p.x,p.y,8,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#d8ffe5';ctx.lineWidth=2;ctx.stroke();
+  }
+}
+async function load(){
+  try{
+    const response=await fetch('/API/MAP/INIT',{cache:'no-store'});
+    if(!response.ok)throw new Error(response.status);
+    mapData=await response.json();
+    document.getElementById('stations').innerHTML=stationNames.map(name=>'<span class="station">'+name+'</span>').join('');
+    statusEl.textContent='● MAPA CARREGADO';statusEl.className='ok';draw();
+  }catch(error){statusEl.textContent='● SEM DADOS DO MAPA';statusEl.className='bad';}
+}
+async function updatePlayer(){
+  if(!mapData)return;
+  try{
+    const response=await fetch('/API/MAP',{cache:'no-store'});
+    if(response.ok){player=await response.json();draw();}
+  }catch(error){}
+}
+load().then(updatePlayer);setInterval(updatePlayer,1000);
+</script>
+</body>
+</html>

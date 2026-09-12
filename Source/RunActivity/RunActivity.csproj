@@ -672,9 +672,6 @@
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
   </ItemGroup>
-  <Target Name="DeployRunActivityToProgram" AfterTargets="PostBuild">
-    <Exec Command="xcopy &quot;$(TargetDir)*&quot; &quot;$(MSBuildProjectDirectory)\..\..\Program\\&quot; /E /I /Y" />
-  </Target>
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
     <Exec Command="PostBuildActions.bat" />
   </Target>

@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>CP Virtual · Mapa real Portugal79</title>
 <style>
-:root{font-family:"Segoe UI",Arial,sans-serif;color:#e8eef1;background:#0d1215}*{box-sizing:border-box}body{margin:0;padding:18px}.bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.brand{font-weight:700}.brand b{color:#df262d;font-size:22px;font-style:italic}.ok{color:#8ee2ad}.bad{color:#ff7479}.card{border:1px solid #364046;background:#171e22;border-radius:9px;padding:14px}.map-wrap{position:relative;overflow:auto;background:#080d10;border-radius:6px;margin-top:12px}canvas{display:block;width:100%;height:auto;min-height:520px}.note{font-size:12px;color:#aab3b9;line-height:1.5}.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:#c6d0d5}.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}.stations{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.station{border:1px solid #455158;border-radius:14px;padding:4px 8px;font-size:11px;color:#d6e0e5}
+:root{font-family:"Segoe UI",Arial,sans-serif;color:#e8eef1;background:#0d1215}*{box-sizing:border-box}body{margin:0;padding:18px}.bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.tools{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.tools button{background:#283238;border:1px solid #4a585f;border-radius:5px;color:#edf1f3;padding:6px 10px;cursor:pointer}.tools button:hover{background:#364249}.brand{font-weight:700}.brand b{color:#df262d;font-size:22px;font-style:italic}.ok{color:#8ee2ad}.bad{color:#ff7479}.card{border:1px solid #364046;background:#171e22;border-radius:9px;padding:14px}.map-wrap{position:relative;overflow:auto;background:#080d10;border-radius:6px;margin-top:12px}canvas{display:block;width:100%;height:auto;min-height:520px}.note{font-size:12px;color:#aab3b9;line-height:1.5}.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:#c6d0d5}.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}.stations{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.station{border:1px solid #455158;border-radius:14px;padding:4px 8px;font-size:11px;color:#d6e0e5}
 </style>
 </head>
 <body>
-<div class="bar"><div class="brand"><b>CP</b> VIRTUAL · MAPA REAL DA ROTA</div><div id="status">A carregar geometria…</div></div>
+<div class="bar"><div class="brand"><b>CP</b> VIRTUAL · MAPA REAL DA ROTA</div><div class="tools"><button type="button" onclick="changeZoom(1.5)">−</button><button type="button" onclick="changeZoom(0.67)">+</button><button type="button" onclick="centerOnTrain()">Centrar comboio</button><button type="button" onclick="showFullRoute()">Rota inteira</button><div id="status">A carregar geometria…</div></div></div>
 <section class="card">
   <div class="legend"><span><i style="background:#89979e"></i>via real</span><span><i style="background:#df262d"></i>estações de referência</span><span><i style="background:#8ee2ad"></i>posição do comboio</span></div>
   <div class="map-wrap"><canvas id="map" width="1800" height="820"></canvas></div>
@@ -19,19 +19,34 @@
 <script>
 const canvas=document.getElementById('map'),ctx=canvas.getContext('2d'),statusEl=document.getElementById('status');
 const stationNames=['Alfarelos','Formoselha','Pereira do Campo','Amial','Vila Pouca','Taveiro','Casais','Espadaneira','Bencanta','Coimbra-B'];
-let mapData=null,player=null;
+let mapData=null,player=null,view=null;
 const text=v=>v===null||v===undefined?'':String(v);
+function fullView(){return {latMin:mapData.LatMin,latMax:mapData.LatMax,lonMin:mapData.LonMin,lonMax:mapData.LonMax};}
+function trainView(){
+  const location=player&&player.LatLon;
+  if(!location)return fullView();
+  const latSpan=.075,lonSpan=latSpan*(canvas.width/canvas.height)*1.28;
+  return {latMin:location.Lat-latSpan/2,latMax:location.Lat+latSpan/2,lonMin:location.Lon-lonSpan/2,lonMax:location.Lon+lonSpan/2};
+}
 function toCanvas(latLon){
   const margin=55,w=canvas.width-margin*2,h=canvas.height-margin*2;
-  const lon=Math.max(mapData.LonMin,Math.min(mapData.LonMax,latLon.Lon));
-  const lat=Math.max(mapData.LatMin,Math.min(mapData.LatMax,latLon.Lat));
-  return {x:margin+(lon-mapData.LonMin)/(mapData.LonMax-mapData.LonMin)*w,y:canvas.height-margin-(lat-mapData.LatMin)/(mapData.LatMax-mapData.LatMin)*h};
+  return {x:margin+(latLon.Lon-view.lonMin)/(view.lonMax-view.lonMin)*w,y:canvas.height-margin-(latLon.Lat-view.latMin)/(view.latMax-view.latMin)*h};
 }
+function visible(latLon,padding=.01){return latLon&&latLon.Lat>=view.latMin-padding&&latLon.Lat<=view.latMax+padding&&latLon.Lon>=view.lonMin-padding&&latLon.Lon<=view.lonMax+padding;}
+function changeZoom(factor){
+  if(!view)return;
+  const lat=(view.latMin+view.latMax)/2,lon=(view.lonMin+view.lonMax)/2;
+  const latSpan=(view.latMax-view.latMin)*factor,lonSpan=(view.lonMax-view.lonMin)*factor;
+  view={latMin:lat-latSpan/2,latMax:lat+latSpan/2,lonMin:lon-lonSpan/2,lonMax:lon+lonSpan/2};draw();
+}
+function centerOnTrain(){if(player&&player.LatLon){view=trainView();draw();}}
+function showFullRoute(){if(mapData){view=fullView();draw();}}
+window.changeZoom=changeZoom;window.centerOnTrain=centerOnTrain;window.showFullRoute=showFullRoute;
 function namedStations(){
   const points=mapData.PointOnApiMapList||[];
   return points.filter(point=>{
     const name=text(point.Name).toLowerCase();
-    return stationNames.some(station=>name.includes(station.toLowerCase()));
+    return visible(point.LatLon)&&stationNames.some(station=>name.includes(station.toLowerCase()));
   });
 }
 function draw(){
@@ -40,7 +55,7 @@ function draw(){
   ctx.fillStyle='#080d10';ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.strokeStyle='#7f8c92';ctx.lineWidth=1.2;ctx.beginPath();
   for(const line of (mapData.LineOnApiMapList||[])){
-    if(!line.LatLonFrom||!line.LatLonTo)continue;
+    if(!line.LatLonFrom||!line.LatLonTo||(!visible(line.LatLonFrom,.02)&&!visible(line.LatLonTo,.02)))continue;
     const a=toCanvas(line.LatLonFrom),b=toCanvas(line.LatLonTo);
     ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
   }
@@ -63,6 +78,7 @@ async function load(){
     const response=await fetch('/API/MAP/INIT',{cache:'no-store'});
     if(!response.ok)throw new Error(response.status);
     mapData=await response.json();
+    view=fullView();
     document.getElementById('stations').innerHTML=stationNames.map(name=>'<span class="station">'+name+'</span>').join('');
     statusEl.textContent='● MAPA CARREGADO';statusEl.className='ok';draw();
   }catch(error){statusEl.textContent='● SEM DADOS DO MAPA';statusEl.className='bad';}
@@ -71,7 +87,7 @@ async function updatePlayer(){
   if(!mapData)return;
   try{
     const response=await fetch('/API/MAP',{cache:'no-store'});
-    if(response.ok){player=await response.json();draw();}
+    if(response.ok){player=await response.json();if(!view||view===fullView())view=trainView();draw();}
   }catch(error){}
 }
 load().then(updatePlayer);setInterval(updatePlayer,1000);

@@ -1,181 +1,34 @@
 <!doctype html>
 <html lang="pt-PT">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>CP Virtual · Posto de Comando</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CP Virtual · Tomar serviço</title>
 <style>
-:root{font-family:"Segoe UI",Arial,sans-serif;color:#edf1f3;background:#0e1215}*{box-sizing:border-box}body{margin:0}header{display:flex;gap:18px;align-items:center;justify-content:space-between;padding:18px 28px;background:#1b2227;border-bottom:3px solid #df262d}header strong{font-size:24px;color:#df262d;font-style:italic}.ok{color:#8ee2ad}.bad{color:#ff7479}main{display:grid;grid-template-columns:1.3fr 1fr;gap:18px;padding:22px}.card{background:#1a2024;border:1px solid #343c42;border-radius:10px;padding:18px}h2{font-size:14px;margin:0 0 12px;color:#b8c0c5;letter-spacing:.04em}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stat{padding:14px;background:#11171b;border-radius:7px}.stat b{display:block;font-size:23px;color:#fff}.stat span{font-size:11px;color:#aab3b9}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px;border-bottom:1px solid #30373c}th{font-size:11px;color:#8f999f}td{font-size:13px}.live{color:#8ee2ad}.occupied{color:#ffcc66}.signal{font-family:Consolas,monospace;font-size:12px}.note{font-size:12px;line-height:1.5;color:#aab3b9}.pill{display:inline-block;border:1px solid #465158;border-radius:99px;padding:4px 8px;margin:0 5px 5px 0;font-size:11px;color:#cbd3d7}.muted{color:#aab3b9}.section-gap{margin-top:22px}.diagram-card{grid-column:1/-1}.diagram-layout{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:14px}.diagram{width:100%;min-height:330px;background:#10161a;border:1px solid #303a40;border-radius:7px}.track{stroke:#647077;stroke-width:4;stroke-linecap:round}.node{cursor:pointer}.node circle{fill:#1d2a30;stroke:#85939a;stroke-width:2}.node.occupied circle{fill:#5d471b;stroke:#ffcc66}.node.junction circle{fill:#173544;stroke:#62c4e8}.node.player circle{fill:#1a5035;stroke:#8ee2ad;stroke-width:4}.node text{fill:#d8e0e4;font:12px Consolas,monospace;pointer-events:none}.signal-mark{fill:#df262d}.signal-label{fill:#ffc7c9;font:10px Consolas,monospace}.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:#aab3b9;margin:10px 0 0}.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}.detail-box{background:#11171b;border-radius:7px;padding:14px;font-size:12px;color:#cbd3d7}.detail-box b{display:block;color:#fff;margin-bottom:8px}@media(max-width:780px){main{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}header{align-items:flex-start;flex-direction:column}.diagram-layout{grid-template-columns:1fr}}
+:root{font-family:"Segoe UI",Arial,sans-serif;color:#edf2f4;background:#091014;--red:#e12830;--green:#55dc8b;--card:#172126;--border:#344149}*{box-sizing:border-box}body{margin:0;min-height:100vh}header{height:58px;padding:0 24px;display:flex;align-items:center;justify-content:space-between;background:#182126;border-bottom:3px solid var(--red)}.brand b{font-size:25px;color:var(--red);font-style:italic}.online{color:#8ee2ad}main{max-width:1050px;margin:42px auto;padding:0 20px}.intro{margin-bottom:22px}.intro h1{margin:0 0 7px;font-size:27px}.intro p{margin:0;color:#9dacb3}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px}.card h2{margin:0 0 8px;font-size:18px}.card p{color:#a9b6bc;font-size:13px;line-height:1.5;min-height:40px}.role{cursor:pointer;transition:.15s}.role:hover,.role.selected{border-color:#71858f;background:#1d2a30}.role.selected{box-shadow:inset 4px 0 var(--green)}label{display:block;margin:18px 0 6px;color:#aab7bd;font-size:12px;font-weight:700}input,select{width:100%;background:#0d1519;border:1px solid #46545c;border-radius:6px;color:#eef3f5;padding:11px 12px;font-size:14px}button.primary{width:100%;margin-top:18px;padding:12px;border:1px solid #4c8062;border-radius:6px;background:#1d5035;color:#caffdc;font-weight:700;cursor:pointer}button.primary:disabled{opacity:.4;cursor:not-allowed}.status{margin-top:13px;color:#a7b3b9;font-size:12px}.status.bad{color:#ff8a8f}.chooser{grid-column:1/-1}.hidden{display:none}.tag{display:inline-block;border:1px solid #46545c;border-radius:20px;padding:4px 8px;color:#b9c5ca;font-size:11px;margin-top:7px}@media(max-width:720px){.grid{grid-template-columns:1fr}.chooser{grid-column:auto}}
 </style>
 </head>
 <body>
-<header>
-  <div><strong>CP</strong> VIRTUAL · POSTO DE COMANDO</div>
-  <div id="status">A ligar ao Open Rails…</div>
-</header>
+<header><div class="brand"><b>CP</b> VIRTUAL · OPERAÇÕES</div><div id="connection">A ligar ao Open Rails…</div></header>
 <main>
-  <section class="card">
-    <h2 id="route">ROTA</h2>
-    <div class="stats">
-      <div class="stat"><b id="trainCount">—</b><span>COMBOIOS ATIVOS</span></div>
-      <div class="stat"><b id="occupiedCount">—</b><span>CIRCUITOS OCUPADOS</span></div>
-      <div class="stat"><b id="signalCount">—</b><span>SINAIS CARREGADOS</span></div>
-    </div>
-    <h2 class="section-gap">COMBOIOS DA SESSÃO</h2>
-    <table><thead><tr><th>SERVIÇO</th><th>VELOCIDADE</th><th>CIRCUITO</th><th>MODO</th></tr></thead><tbody id="trains"><tr><td colspan="4">A aguardar simulação…</td></tr></tbody></table>
-    <h2 class="section-gap">ÁREA ACOMPANHADA</h2>
-    <div id="area" class="note">A área será calculada a partir da posição do comboio.</div>
+ <div class="intro"><h1>Tomar serviço</h1><p>Identifica-te, escolhe a função e o serviço operacional desta sessão.</p></div>
+ <div class="grid">
+  <section id="driverRole" class="card role" tabindex="0"><h2>Maquinista</h2><p>Assume um comboio da sessão e abre o terminal Rádio Solo–Comboio.</p><span class="tag">COMBOIO + RSC</span></section>
+  <section id="dispatcherRole" class="card role" tabindex="0"><h2>Controlador de tráfego</h2><p>Assume uma zona de regulação e abre o respetivo quadro de comando.</p><span class="tag">ZONA + SINAIS + AGULHAS</span></section>
+  <section class="card chooser">
+   <label for="operatorName">IDENTIFICAÇÃO DO OPERADOR</label><input id="operatorName" maxlength="40" placeholder="Nome ou indicativo">
+   <div id="driverChoice" class="hidden"><label for="trainChoice">COMBOIO / SERVIÇO</label><select id="trainChoice"><option>A carregar comboios…</option></select></div>
+   <div id="dispatcherChoice" class="hidden"><label for="postChoice">ZONA DE CONTROLO</label><select id="postChoice"><option>A carregar postos…</option></select></div>
+   <button id="takeDuty" class="primary" disabled>TOMAR SERVIÇO</button>
+   <div id="message" class="status">Seleciona primeiro Maquinista ou Controlador de tráfego.</div>
   </section>
-  <section class="card">
-    <h2>SINAIS PRÓXIMOS</h2>
-    <table><thead><tr><th>REFERÊNCIA</th><th>CIRCUITO</th><th>ASPETO</th><th>PERMISSÃO</th></tr></thead><tbody id="signals"><tr><td colspan="4">A aguardar dados…</td></tr></tbody></table>
-    <h2 class="section-gap">AGULHAS PRÓXIMAS</h2>
-    <table><thead><tr><th>CIRCUITO</th><th>POSIÇÃO</th><th>ESTADO</th></tr></thead><tbody id="switches"><tr><td colspan="3">A aguardar dados…</td></tr></tbody></table>
-    <p class="note">Modo de observação: os valores vêm da sessão ativa. Os comandos ficam bloqueados até existir validação de posto, itinerário, ocupação e encravamento.</p>
-  </section>
-  <section class="card diagram-card">
-    <h2>DIAGRAMA LOCAL DE CIRCULAÇÃO</h2>
-    <div class="diagram-layout">
-      <div>
-        <svg id="diagram" class="diagram" viewBox="0 0 1000 340" role="img" aria-label="Diagrama dos circuitos próximos"></svg>
-        <div class="legend"><span><i style="background:#8ee2ad"></i>comboio</span><span><i style="background:#ffcc66"></i>circuito ocupado</span><span><i style="background:#62c4e8"></i>agulha</span><span><i style="background:#df262d"></i>sinal</span></div>
-      </div>
-      <aside id="circuitDetail" class="detail-box"><b>Inspeção de circuito</b>Clica num circuito para ver o respetivo estado. Este diagrama é local à posição do comboio.</aside>
-    </div>
-    <p class="note">Representação automática da topologia do Open Rails. Serve para validação e observação; as posições no ecrã ainda não correspondem ao esquema geográfico definitivo da PT79.</p>
-  </section>
+ </div>
 </main>
 <script>
-const statusEl=document.getElementById('status');
-const text=v=>v===null||v===undefined||v===''?'—':String(v);
-const escape=v=>text(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let topology=null;
-let selectedCircuit=null;
-
-async function loadTopology(){
-  const response=await fetch('/API/CPV/TOPOLOGY',{cache:'no-store'});
-  if(!response.ok)throw new Error(response.status);
-  topology=await response.json();
-  document.getElementById('route').textContent='ROTA · '+text(topology.RouteName);
-  document.getElementById('signalCount').textContent=(topology.Signals||[]).length;
-}
-function getNearbyCircuitIndexes(startIndex,maxDepth){
-  if(startIndex===null||startIndex===undefined||!topology)return new Set();
-  const circuits=new Map((topology.Circuits||[]).map(c=>[String(c.Index),c]));
-  const nearby=new Set([String(startIndex)]), queue=[[String(startIndex),0]];
-  while(queue.length){
-    const [index,depth]=queue.shift();
-    if(depth>=maxDepth)continue;
-    const circuit=circuits.get(index);
-    for(const pin of (circuit&&circuit.Pins)||[]){
-      const next=String(pin);
-      if(circuits.has(next)&&!nearby.has(next)){nearby.add(next);queue.push([next,depth+1]);}
-    }
-  }
-  return nearby;
-}
-function aspect(signal){
-  if(signal.DrawState===null||signal.DrawState===undefined)return '—';
-  return signal.DrawState===0?'Fechado / sem aspeto':'Estado '+signal.DrawState;
-}
-function draw(state){
-  const trains=state.Trains||[], circuits=state.Circuits||[], signalStates=state.Signals||[];
-  document.getElementById('trainCount').textContent=trains.length;
-  document.getElementById('occupiedCount').textContent=circuits.filter(c=>c.Occupied).length;
-  document.getElementById('trains').innerHTML=trains.length?trains.map(t=>'<tr><td class="live">'+escape(t.Number)+' · '+escape(t.Name)+'</td><td>'+Number(t.SpeedKmh||0).toFixed(1)+' km/h</td><td>'+escape(t.FrontCircuit)+'</td><td>'+escape(t.ControlMode)+'</td></tr>').join(''):'<tr><td colspan="4">Nenhum comboio ativo nesta sessão.</td></tr>';
-
-  const referenceTrain=trains.find(t=>t.ControlMode==='PLAYER')||trains[0];
-  const nearby=getNearbyCircuitIndexes(referenceTrain&&referenceTrain.FrontCircuit,4);
-  const circuitStates=new Map(circuits.map(c=>[String(c.Index),c]));
-  const signalTopology=new Map((topology.Signals||[]).map(s=>[String(s.Reference),s]));
-  const nearbySignals=signalStates.map(s=>Object.assign({},s,{Topology:signalTopology.get(String(s.Reference))})).filter(s=>s.Topology&&nearby.has(String(s.Topology.TrackCircuit))).slice(0,24);
-  document.getElementById('signals').innerHTML=nearbySignals.length?nearbySignals.map(s=>'<tr><td class="signal">'+escape(s.Reference)+'</td><td>'+escape(s.Topology.TrackCircuit)+'</td><td>'+escape(aspect(s))+'</td><td>'+escape(s.Permission)+'</td></tr>').join(''):'<tr><td colspan="4">Sem sinais nos quatro circuitos adjacentes ao comboio.</td></tr>';
-
-  const nearbySwitches=(topology.Circuits||[]).filter(c=>nearby.has(String(c.Index))&&String(c.Type).toLowerCase().includes('junction')).map(c=>({Topology:c,State:circuitStates.get(String(c.Index))})).slice(0,16);
-  document.getElementById('switches').innerHTML=nearbySwitches.length?nearbySwitches.map(s=>'<tr><td class="signal">'+escape(s.Topology.Index)+'</td><td>'+escape(s.State&&s.State.JunctionRoute)+'</td><td>'+((s.State&&s.State.Occupied)?'<span class="occupied">OCUPADA</span>':'Livre')+'</td></tr>').join(''):'<tr><td colspan="3">Nenhuma agulha nos circuitos adjacentes.</td></tr>';
-
-  const names=referenceTrain?['Comboio: '+text(referenceTrain.Number),'Circuito: '+text(referenceTrain.FrontCircuit),'Alcance: 4 circuitos'].map(v=>'<span class="pill">'+escape(v)+'</span>').join(''):'<span class="muted">Sem comboio disponível para calcular a área.</span>';
-  document.getElementById('area').innerHTML=names;
-  drawDiagram(referenceTrain&&referenceTrain.FrontCircuit,circuits,signalStates);
-}
-function circuitKey(value){return String(value);}
-function isJunction(circuit){return String(circuit&&circuit.Type||'').toLowerCase().includes('junction');}
-function drawDiagram(startIndex,stateCircuits,signalStates){
-  const svg=document.getElementById('diagram');
-  const detail=document.getElementById('circuitDetail');
-  if(startIndex===null||startIndex===undefined||!topology){svg.innerHTML='';return;}
-  const circuitMap=new Map((topology.Circuits||[]).map(c=>[circuitKey(c.Index),c]));
-  const stateMap=new Map((stateCircuits||[]).map(c=>[circuitKey(c.Index),c]));
-  const root=circuitKey(startIndex);
-  if(!circuitMap.has(root)){svg.innerHTML='';return;}
-  const depth=new Map([[root,0]]), queue=[root];
-  while(queue.length&&depth.size<32){
-    const current=queue.shift(), level=depth.get(current);
-    if(level>=3)continue;
-    const circuit=circuitMap.get(current);
-    for(const pin of (circuit.Pins||[])){
-      const next=circuitKey(pin);
-      if(circuitMap.has(next)&&!depth.has(next)){depth.set(next,level+1);queue.push(next);}
-    }
-  }
-  const groups=[[],[],[],[]];
-  depth.forEach((level,index)=>groups[level].push(index));
-  groups.forEach(group=>group.sort((a,b)=>Number(a)-Number(b)));
-  const coords=new Map();
-  groups.forEach((group,level)=>group.forEach((index,position)=>{
-    coords.set(index,{x:90+level*255,y:170+(position-(group.length-1)/2)*58});
-  }));
-  const links=[];
-  depth.forEach((level,index)=>{
-    const from=circuitMap.get(index);
-    for(const pin of (from.Pins||[])){
-      const next=circuitKey(pin);
-      if(!coords.has(next))continue;
-      const pair=[index,next].sort((a,b)=>Number(a)-Number(b)).join(':');
-      if(!links.some(link=>link.key===pair))links.push({key:pair,a:index,b:next});
-    }
-  });
-  const signalTopology=new Map((topology.Signals||[]).map(signal=>[circuitKey(signal.Reference),signal]));
-  const signalsByCircuit=new Map();
-  for(const signalState of (signalStates||[])){
-    const signal=signalTopology.get(circuitKey(signalState.Reference));
-    if(signal&&coords.has(circuitKey(signal.TrackCircuit))){
-      const key=circuitKey(signal.TrackCircuit);
-      const list=signalsByCircuit.get(key)||[];
-      list.push(signalState);signalsByCircuit.set(key,list);
-    }
-  }
-  const lines=links.map(link=>{const a=coords.get(link.a),b=coords.get(link.b);return '<line class="track" x1="'+a.x+'" y1="'+a.y+'" x2="'+b.x+'" y2="'+b.y+'"/>';}).join('');
-  const nodes=[...coords.entries()].map(([index,point])=>{
-    const circuit=circuitMap.get(index), state=stateMap.get(index)||{};
-    const classes=['node'];
-    if(index===root)classes.push('player');
-    if(state.Occupied)classes.push('occupied');
-    if(isJunction(circuit))classes.push('junction');
-    const signals=(signalsByCircuit.get(index)||[]).slice(0,2).map((signal,i)=>'<circle class="signal-mark" cx="'+(point.x+20+i*10)+'" cy="'+(point.y-22)+'" r="4"/><text class="signal-label" x="'+(point.x+16+i*10)+'" y="'+(point.y-31)+'">'+escape(signal.Reference)+'</text>').join('');
-    return '<g class="'+classes.join(' ')+'" onclick="selectCircuit('+escape(JSON.stringify(index))+')"><circle cx="'+point.x+'" cy="'+point.y+'" r="16"/><text x="'+(point.x-12)+'" y="'+(point.y+4)+'">'+escape(index)+'</text>'+signals+'</g>';
-  }).join('');
-  svg.innerHTML=lines+nodes;
-  const inspected=circuitKey(selectedCircuit||root);
-  const circuit=circuitMap.get(inspected), state=stateMap.get(inspected)||{};
-  if(circuit){
-    detail.innerHTML='<b>Circuito '+escape(inspected)+'</b><div>Tipo: '+escape(circuit.Type)+'</div><div>Ocupação: '+(state.Occupied?'<span class="occupied">ocupado</span>':'livre')+'</div><div>Reservado: '+escape(state.Reserved)+'</div><div>Agulha: '+(isJunction(circuit)?escape(state.JunctionRoute):'—')+'</div><div>Ligação: '+escape((circuit.Pins||[]).join(', '))+'</div>';
-  }
-}
-window.selectCircuit=function(index){selectedCircuit=index;};
-
-async function refresh(){
-  try{
-    if(!topology)await loadTopology();
-    const response=await fetch('/API/CPV/STATE',{cache:'no-store'});
-    if(!response.ok)throw new Error(response.status);
-    draw(await response.json());
-    statusEl.textContent='● LIGADO · atualização a cada 1 s';statusEl.className='ok';
-  }catch(error){
-    statusEl.textContent='● SEM LIGAÇÃO AO OPEN RAILS';statusEl.className='bad';
-  }
-}
-refresh();setInterval(refresh,1000);
+const $=id=>document.getElementById(id);let role=null,trains=[],posts=[];
+function chooseRole(next){role=next;$('driverRole').classList.toggle('selected',role==='driver');$('dispatcherRole').classList.toggle('selected',role==='dispatcher');$('driverChoice').classList.toggle('hidden',role!=='driver');$('dispatcherChoice').classList.toggle('hidden',role!=='dispatcher');$('takeDuty').disabled=false;$('message').className='status';$('message').textContent=role==='driver'?'Seleciona o comboio que vais conduzir.':'Seleciona a zona que vais controlar.'}
+$('driverRole').onclick=()=>chooseRole('driver');$('dispatcherRole').onclick=()=>chooseRole('dispatcher');$('driverRole').onkeydown=e=>{if(e.key==='Enter')chooseRole('driver')};$('dispatcherRole').onkeydown=e=>{if(e.key==='Enter')chooseRole('dispatcher')};
+async function load(){try{const [stateResponse,configResponse]=await Promise.all([fetch('/API/CPV/STATE',{cache:'no-store'}),fetch('/CPVirtual/pt79-schematics.json',{cache:'no-store'})]);if(!stateResponse.ok||!configResponse.ok)throw new Error('HTTP');const state=await stateResponse.json(),config=await configResponse.json();trains=state.Trains||[];posts=config.posts||[];$('trainChoice').innerHTML=trains.length?trains.map(t=>'<option value="'+Number(t.Number)+'">'+String(t.Number)+' · '+String(t.Name||'PLAYER')+' · '+Number(t.SpeedKmh||0).toFixed(1)+' km/h</option>').join(''):'<option value="">Nenhum comboio disponível</option>';$('postChoice').innerHTML=posts.length?posts.map(p=>'<option value="'+encodeURIComponent(p.id)+'">'+p.title+' · '+p.dispatcherPost+'</option>').join(''):'<option value="">Nenhum posto configurado</option>';$('connection').textContent='● LIGADO AO OPEN RAILS';$('connection').className='online'}catch(e){$('connection').textContent='● SEM LIGAÇÃO AO OPEN RAILS';$('message').textContent='Abre uma sessão no Open Rails antes de tomar serviço.';$('message').className='status bad'}}
+$('takeDuty').onclick=()=>{const name=$('operatorName').value.trim();if(!name){$('message').textContent='Indica o nome ou indicativo do operador.';$('message').className='status bad';return}const duty={role,name,takenAt:new Date().toISOString()};if(role==='driver'){const train=$('trainChoice').value;if(train===''){return}duty.trainNumber=Number(train);localStorage.setItem('cpvDuty',JSON.stringify(duty));location.href='/CPVirtual/radio.html?train='+encodeURIComponent(train)}else{const post=$('postChoice').value;if(!post){return}duty.postId=decodeURIComponent(post);localStorage.setItem('cpvDuty',JSON.stringify(duty));location.href='/CPVirtual/posto.html?post='+post}};
+load();setInterval(load,5000);
 </script>
-</body>
-</html>
+</body></html>

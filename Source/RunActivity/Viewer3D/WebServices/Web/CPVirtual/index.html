@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CP Virtual · Posto de Comando</title>
+<style>
+:root{font-family:"Segoe UI",Arial,sans-serif;color:#edf1f3;background:#0e1215}*{box-sizing:border-box}body{margin:0}header{display:flex;gap:18px;align-items:center;justify-content:space-between;padding:18px 28px;background:#1b2227;border-bottom:3px solid #df262d}header strong{font-size:24px;color:#df262d;font-style:italic}.ok{color:#8ee2ad}.bad{color:#ff7479}main{display:grid;grid-template-columns:1.3fr 1fr;gap:18px;padding:22px}.card{background:#1a2024;border:1px solid #343c42;border-radius:10px;padding:18px}h2{font-size:14px;margin:0 0 12px;color:#b8c0c5;letter-spacing:.04em}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stat{padding:14px;background:#11171b;border-radius:7px}.stat b{display:block;font-size:23px;color:#fff}.stat span{font-size:11px;color:#aab3b9}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px;border-bottom:1px solid #30373c}th{font-size:11px;color:#8f999f}td{font-size:13px}.live{color:#8ee2ad}.occupied{color:#ffcc66}.signal{font-family:Consolas,monospace;font-size:12px}.note{font-size:12px;line-height:1.5;color:#aab3b9}@media(max-width:780px){main{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}header{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<header>
+  <div><strong>CP</strong> VIRTUAL · POSTO DE COMANDO</div>
+  <div id="status">A ligar ao Open Rails…</div>
+</header>
+<main>
+  <section class="card">
+    <h2 id="route">ROTA</h2>
+    <div class="stats">
+      <div class="stat"><b id="trainCount">—</b><span>COMBOIOS ATIVOS</span></div>
+      <div class="stat"><b id="occupiedCount">—</b><span>CIRCUITOS OCUPADOS</span></div>
+      <div class="stat"><b id="signalCount">—</b><span>SINAIS CARREGADOS</span></div>
+    </div>
+    <h2 style="margin-top:22px">COMBOIOS DA SESSÃO</h2>
+    <table><thead><tr><th>SERVIÇO</th><th>VELOCIDADE</th><th>CIRCUITO</th><th>MODO</th></tr></thead><tbody id="trains"><tr><td colspan="4">A aguardar simulação…</td></tr></tbody></table>
+  </section>
+  <section class="card">
+    <h2>SINAIS E VIA</h2>
+    <table><thead><tr><th>REFERÊNCIA</th><th>ASPETO</th><th>PERMISSÃO</th></tr></thead><tbody id="signals"><tr><td colspan="3">A aguardar dados…</td></tr></tbody></table>
+    <p class="note">Painel em modo de observação. Ainda não envia comandos a sinais, agulhas ou comboios.</p>
+  </section>
+</main>
+<script>
+const statusEl=document.getElementById('status');
+const text=v=>v===null||v===undefined||v===''?'—':String(v);
+const escape=v=>text(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let topology=null;
+
+async function loadTopology(){
+  const response=await fetch('/API/CPV/TOPOLOGY',{cache:'no-store'});
+  if(!response.ok)throw new Error(response.status);
+  topology=await response.json();
+  document.getElementById('route').textContent='ROTA · '+text(topology.RouteName);
+  document.getElementById('signalCount').textContent=(topology.Signals||[]).length;
+}
+function draw(state){
+  const trains=state.Trains||[],circuits=state.Circuits||[],signals=state.Signals||[];
+  document.getElementById('trainCount').textContent=trains.length;
+  document.getElementById('occupiedCount').textContent=circuits.filter(c=>c.Occupied).length;
+  document.getElementById('trains').innerHTML=trains.length?trains.map(t=>'<tr><td class="live">'+escape(t.Number)+' · '+escape(t.Name)+'</td><td>'+Number(t.SpeedKmh||0).toFixed(1)+' km/h</td><td>'+escape(t.FrontCircuit)+'</td><td>'+escape(t.ControlMode)+'</td></tr>').join(''):'<tr><td colspan="4">Nenhum comboio ativo nesta sessão.</td></tr>';
+  const relevant=signals.filter(s=>s.DrawState||s.ApproachControlSet||s.CallOnEnabled).slice(0,16);
+  document.getElementById('signals').innerHTML=relevant.length?relevant.map(s=>'<tr><td class="signal">'+escape(s.Reference)+'</td><td>'+escape(s.DrawState)+'</td><td>'+escape(s.Permission)+'</td></tr>').join(''):'<tr><td colspan="3">Nenhum sinal ativo a apresentar.</td></tr>';
+}
+async function refresh(){
+  try{
+    if(!topology)await loadTopology();
+    const response=await fetch('/API/CPV/STATE',{cache:'no-store'});
+    if(!response.ok)throw new Error(response.status);
+    draw(await response.json());
+    statusEl.textContent='● LIGADO · atualização a cada 1 s';statusEl.className='ok';
+  }catch(error){
+    statusEl.textContent='● SEM LIGAÇÃO AO OPEN RAILS';statusEl.className='bad';
+  }
+}
+refresh();setInterval(refresh,1000);
+</script>
+</body>
+</html>

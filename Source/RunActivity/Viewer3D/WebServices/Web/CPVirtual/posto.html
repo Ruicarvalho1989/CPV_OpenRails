@@ -5,70 +5,25 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>CP Virtual · Alfarelos — Coimbra-B</title>
 <style>
-:root{font-family:"Segoe UI",Arial,sans-serif;color:#edf1f3;background:#0b1013}*{box-sizing:border-box}body{margin:0;min-width:920px}header{display:flex;justify-content:space-between;align-items:center;padding:16px 26px;background:#182025;border-bottom:3px solid #df262d}.brand strong{font-size:23px;color:#df262d;font-style:italic}.brand span{font-size:13px;color:#f3f5f6}.ok{color:#8ee2ad}.bad{color:#ff7479}main{padding:18px 22px;display:grid;gap:16px}.card{background:#182025;border:1px solid #354047;border-radius:9px;padding:16px}.titlebar{display:flex;justify-content:space-between;align-items:center}.eyebrow{font-size:11px;letter-spacing:.08em;color:#a9b4ba}.titlebar h1{font-size:20px;margin:4px 0 0}.mode{border:1px solid #4b5b63;border-radius:20px;padding:6px 10px;font-size:11px;color:#f4d78c}.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.stat{background:#10161a;border-radius:7px;padding:12px}.stat b{display:block;font-size:22px}.stat span{font-size:10px;color:#9eabb1}.layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px}.panel-head{font-size:12px;font-weight:700;letter-spacing:.06em;color:#c4cdd2;margin-bottom:12px}.schematic-wrap{overflow-x:auto;background:#090e11;border:1px solid #2d3940;border-radius:7px}.schematic{height:420px;min-width:1160px;position:relative;background:linear-gradient(180deg,#0c1317,#080d10)}.rail{position:absolute;left:54px;right:54px;height:4px;background:#d2d8db;box-shadow:0 0 0 1px #727f85}.rail.up{top:198px}.rail.down{top:252px}.direction{position:absolute;top:150px;font-size:11px;letter-spacing:.1em;color:#95a5ad}.direction.west{left:54px}.direction.east{right:54px}.station{position:absolute;top:172px;transform:translateX(-50%);width:112px;text-align:center}.station .name{display:block;font-size:11px;color:#e7ecee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.station .ref{font:10px Consolas,monospace;color:#819099}.station:after{content:"";display:block;margin:8px auto 0;width:2px;height:104px;background:#839198}.station:before{content:"";display:block;position:absolute;top:76px;left:50%;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:#df262d;border:2px solid #ffa2a5;z-index:2}.boundary{position:absolute;top:185px;height:88px;border-left:2px dashed #df262d}.boundary.left{left:54px}.boundary.right{right:54px}.boundary label{position:absolute;top:-21px;white-space:nowrap;font-size:10px;color:#ffb9bb}.boundary.right label{right:0}.train-marker{position:absolute;top:229px;width:15px;height:15px;border-radius:50%;background:#8ee2ad;border:3px solid #d9ffe5;box-shadow:0 0 14px #8ee2ad;transform:translateX(-50%);display:none;z-index:3}.train-label{position:absolute;top:276px;transform:translateX(-50%);font-size:11px;white-space:nowrap;color:#a8f0c2;display:none}.legend{padding:11px 14px;display:flex;gap:16px;color:#aab6bc;font-size:11px;border-top:1px solid #2d3940}.legend i{width:10px;height:10px;display:inline-block;border-radius:50%;margin-right:5px}.queue{display:grid;gap:8px}.empty{font-size:12px;color:#9ba7ad;line-height:1.5;background:#10161a;border-radius:7px;padding:12px}.train-row{display:flex;justify-content:space-between;gap:8px;padding:10px;background:#10161a;border-radius:7px;font-size:12px}.train-row b{color:#8ee2ad}.safe{font-size:11px;line-height:1.5;color:#aab6bc;border-left:3px solid #df262d;padding-left:10px;margin:0}.hidden{display:none}
+:root{font-family:"Segoe UI",Arial,sans-serif;color:#edf1f3;background:#0b1013}*{box-sizing:border-box}body{margin:0;min-width:920px}header{display:flex;justify-content:space-between;align-items:center;padding:16px 26px;background:#182025;border-bottom:3px solid #df262d}.brand strong{font-size:23px;color:#df262d;font-style:italic}.brand span{font-size:13px;color:#f3f5f6}.ok{color:#8ee2ad}.bad{color:#ff7479}main{padding:18px 22px;display:grid;gap:16px}.card{background:#182025;border:1px solid #354047;border-radius:9px;padding:16px}.titlebar{display:flex;justify-content:space-between;align-items:center}.eyebrow{font-size:11px;letter-spacing:.08em;color:#a9b4ba}.titlebar h1{font-size:20px;margin:4px 0 0}.mode{border:1px solid #4b5b63;border-radius:20px;padding:6px 10px;font-size:11px;color:#f4d78c}.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.stat{background:#10161a;border-radius:7px;padding:12px}.stat b{display:block;font-size:22px}.stat span{font-size:10px;color:#9eabb1}.layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px}.panel-head{font-size:12px;font-weight:700;letter-spacing:.06em;color:#c4cdd2;margin-bottom:12px}.schematic-wrap{overflow-x:auto;background:#090e11;border:1px solid #2d3940;border-radius:7px}.schematic{height:420px;min-width:1160px;position:relative;background:linear-gradient(180deg,#0c1317,#080d10)}.rail{position:absolute;left:54px;right:54px;height:4px;background:#d2d8db;box-shadow:0 0 0 1px #727f85}.rail.up{top:198px}.rail.down{top:252px}.direction{position:absolute;top:150px;font-size:11px;letter-spacing:.1em;color:#95a5ad}.direction.west{left:54px}.direction.east{right:54px}.station{position:absolute;top:172px;transform:translateX(-50%);width:112px;text-align:center}.station .name{display:block;font-size:11px;color:#e7ecee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.station .ref{font:10px Consolas,monospace;color:#819099}.station:after{content:"";display:block;margin:8px auto 0;width:2px;height:104px;background:#839198}.station:before{content:"";display:block;position:absolute;top:76px;left:50%;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:#df262d;border:2px solid #ffa2a5;z-index:2}.boundary{position:absolute;top:185px;height:88px;border-left:2px dashed #df262d}.boundary.left{left:54px}.boundary.right{right:54px}.boundary label{position:absolute;top:-21px;white-space:nowrap;font-size:10px;color:#ffb9bb}.boundary.right label{right:0}.legend{padding:11px 14px;display:flex;gap:16px;color:#aab6bc;font-size:11px;border-top:1px solid #2d3940}.legend i{width:10px;height:10px;display:inline-block;border-radius:50%;margin-right:5px}.queue{display:grid;gap:8px}.empty{font-size:12px;color:#9ba7ad;line-height:1.5;background:#10161a;border-radius:7px;padding:12px}.train-row{display:flex;justify-content:space-between;gap:8px;padding:10px;background:#10161a;border-radius:7px;font-size:12px}.train-row b{color:#8ee2ad}.safe{font-size:11px;line-height:1.5;color:#aab6bc;border-left:3px solid #df262d;padding-left:10px;margin:0}.mapping{position:absolute;left:50%;top:300px;transform:translateX(-50%);width:680px;text-align:center;color:#aab6bc;font-size:12px;line-height:1.5}
 </style>
 </head>
 <body>
-<header>
-  <div class="brand"><strong>CP</strong> <span>VIRTUAL · POSTO DE COMANDO</span></div>
-  <div id="connection">A ligar ao Open Rails…</div>
-</header>
+<header><div class="brand"><strong>CP</strong> <span>VIRTUAL · POSTO DE COMANDO</span></div><div id="connection">A ligar ao Open Rails…</div></header>
 <main>
-  <section class="card titlebar">
-    <div><div class="eyebrow" id="postId">POSTO RSC-CT-2</div><h1 id="postTitle">Alfarelos — Coimbra-B</h1></div>
-    <div class="mode">OBSERVAÇÃO · COMANDOS BLOQUEADOS</div>
-  </section>
-  <section class="summary">
-    <div class="stat"><b id="trainCount">—</b><span>COMBOIOS NA SESSÃO</span></div>
-    <div class="stat"><b id="occupiedCount">—</b><span>CIRCUITOS OCUPADOS</span></div>
-    <div class="stat"><b id="signalCount">—</b><span>SINAIS DA ROTA</span></div>
-    <div class="stat"><b id="requestsCount">0</b><span>PEDIDOS DE MAQUINISTAS</span></div>
-  </section>
+  <section class="card titlebar"><div><div class="eyebrow" id="postId">POSTO RSC-CT-2</div><h1 id="postTitle">Alfarelos — Coimbra-B</h1></div><div class="mode">OBSERVAÇÃO · COMANDOS BLOQUEADOS</div></section>
+  <section class="summary"><div class="stat"><b id="trainCount">—</b><span>COMBOIOS NA SESSÃO</span></div><div class="stat"><b id="occupiedCount">—</b><span>CIRCUITOS OCUPADOS</span></div><div class="stat"><b id="signalCount">—</b><span>SINAIS DA ROTA</span></div><div class="stat"><b>0</b><span>PEDIDOS DE MAQUINISTAS</span></div></section>
   <section class="layout">
-    <section class="card">
-      <div class="panel-head">QUADRO SINÓTICO · ÁREA FIXA DO POSTO</div>
-      <div class="schematic-wrap"><div id="schematic" class="schematic">
-        <div class="direction west">◀ SENTIDO ALFARELOS</div><div class="direction east">SENTIDO COIMBRA-B ▶</div>
-        <div class="boundary left"><label>LIMITE DO POSTO</label></div><div class="boundary right"><label>LIMITE DO POSTO</label></div>
-        <div class="rail up"></div><div class="rail down"></div>
-        <div id="trainMarker" class="train-marker"></div><div id="trainLabel" class="train-label"></div>
-      </div></div>
-      <div class="legend"><span><i style="background:#d2d8db"></i>via</span><span><i style="background:#df262d"></i>limite/sinal a mapear</span><span><i style="background:#8ee2ad"></i>comboio detetado</span></div>
-    </section>
-    <aside class="card">
-      <div class="panel-head">CIRCULAÇÃO E COMUNICAÇÕES</div>
-      <div id="trains" class="queue"><div class="empty">A aguardar simulação…</div></div>
-      <div class="panel-head" style="margin-top:18px">PEDIDOS DOS MAQUINISTAS</div>
-      <div class="empty">Sem pedidos pendentes. Quando o canal de comunicação estiver ligado, os pedidos de autorização aparecerão aqui e ficarão registados.</div>
-      <p class="safe">Abertura de sinais, comandos de agulhas e autorizações só serão ativos depois de o posto estar assumido e de existirem validações de itinerário, ocupação e encravamento.</p>
-    </aside>
+    <section class="card"><div class="panel-head">QUADRO SINÓTICO · ÁREA FIXA DO POSTO</div><div class="schematic-wrap"><div id="schematic" class="schematic"><div class="direction west">◀ SENTIDO ALFARELOS</div><div class="direction east">SENTIDO COIMBRA-B ▶</div><div class="boundary left"><label>LIMITE DO POSTO</label></div><div class="boundary right"><label>LIMITE DO POSTO</label></div><div class="rail up"></div><div class="rail down"></div><div class="mapping">O quadro mantém sempre esta zona, mesmo sem comboios. A próxima ligação mapeia os circuitos, sinais e agulhas reais da PT79 para estas posições — sem inventar a posição de um comboio fora do posto.</div></div></div><div class="legend"><span><i style="background:#d2d8db"></i>via</span><span><i style="background:#df262d"></i>limite/sinal a mapear</span></div></section>
+    <aside class="card"><div class="panel-head">CIRCULAÇÃO E COMUNICAÇÕES</div><div id="trains" class="queue"><div class="empty">A aguardar simulação…</div></div><div class="panel-head" style="margin-top:18px">PEDIDOS DOS MAQUINISTAS</div><div class="empty">Sem pedidos pendentes. Quando o canal de comunicação estiver ligado, os pedidos de autorização aparecerão aqui e ficarão registados.</div><p class="safe">Abertura de sinais, comandos de agulhas e autorizações só serão ativos depois de o posto estar assumido e de existirem validações de itinerário, ocupação e encravamento.</p></aside>
   </section>
 </main>
 <script>
-const postKey='ALFARELOS_COIMBRA_B';
-const connection=document.getElementById('connection');
-let topology=null,post=null;
-const esc=v=>String(v??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-async function loadConfig(){
- const r=await fetch('/CPVirtual/pt79-schematics.json',{cache:'no-store'}); if(!r.ok)throw new Error(r.status);
- const config=await r.json(); post=config.posts.find(p=>p.id===postKey);
- document.getElementById('postId').textContent='POSTO '+post.dispatcherPost+' · LIMITES: '+post.boundaries.west+' — '+post.boundaries.east;
- document.getElementById('postTitle').textContent=post.title;
- const schematic=document.getElementById('schematic');
- post.stations.forEach((station,index)=>{const item=document.createElement('div');item.className='station';item.style.left=(6+index*88/post.stations.length)+'%';item.innerHTML='<span class="name">'+esc(station.name)+'</span><span class="ref">ref. '+esc(station.reference)+'</span>';schematic.appendChild(item);});
-}
+const postKey='ALFARELOS_COIMBRA_B',connection=document.getElementById('connection');let topology=null,post=null;const esc=v=>String(v??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function loadConfig(){const r=await fetch('/CPVirtual/pt79-schematics.json',{cache:'no-store'});if(!r.ok)throw new Error(r.status);const config=await r.json();post=config.posts.find(p=>p.id===postKey);document.getElementById('postId').textContent='POSTO '+post.dispatcherPost+' · LIMITES: '+post.boundaries.west+' — '+post.boundaries.east;document.getElementById('postTitle').textContent=post.title;const schematic=document.getElementById('schematic');post.stations.forEach((station,index)=>{const item=document.createElement('div');item.className='station';item.style.left=(6+index*88/post.stations.length)+'%';item.innerHTML='<span class="name">'+esc(station.name)+'</span><span class="ref">ref. '+esc(station.reference)+'</span>';schematic.appendChild(item)})}
 async function loadTopology(){const r=await fetch('/API/CPV/TOPOLOGY',{cache:'no-store'});if(!r.ok)throw new Error(r.status);topology=await r.json();document.getElementById('signalCount').textContent=(topology.Signals||[]).length}
-function update(state){
- const trains=state.Trains||[],circuits=state.Circuits||[];
- document.getElementById('trainCount').textContent=trains.length;
- document.getElementById('occupiedCount').textContent=circuits.filter(c=>c.Occupied).length;
- document.getElementById('trains').innerHTML=trains.length?trains.map(t=>'<div class="train-row"><b>'+esc(t.Number)+' · '+esc(t.Name)+'</b><span>'+Number(t.SpeedKmh||0).toFixed(1)+' km/h<br>circuito '+esc(t.FrontCircuit)+'</span></div>').join(''):'<div class="empty">Nenhum comboio ativo nesta sessão.</div>';
- const player=trains.find(t=>t.ControlMode==='PLAYER')||trains[0];
- const marker=document.getElementById('trainMarker'),label=document.getElementById('trainLabel');
- if(player){marker.style.display='block';label.style.display='block';marker.style.left='50%';label.style.left='50%';label.textContent=player.Number+' · circuito '+player.FrontCircuit;} else {marker.style.display='none';label.style.display='none';}
-}
-async function refresh(){try{if(!post)await loadConfig();if(!topology)await loadTopology();const r=await fetch('/API/CPV/STATE',{cache:'no-store'});if(!r.ok)throw new Error(r.status);update(await r.json());connection.textContent='● LIGADO · atualização a cada 1 s';connection.className='ok'}catch(e){connection.textContent='● SEM LIGAÇÃO AO OPEN RAILS';connection.className='bad'}}
-refresh();setInterval(refresh,1000);
+function update(state){const trains=state.Trains||[],circuits=state.Circuits||[];document.getElementById('trainCount').textContent=trains.length;document.getElementById('occupiedCount').textContent=circuits.filter(c=>c.Occupied).length;document.getElementById('trains').innerHTML=trains.length?trains.map(t=>'<div class="train-row"><b>'+esc(t.Number)+' · '+esc(t.Name)+'</b><span>'+Number(t.SpeedKmh||0).toFixed(1)+' km/h<br>circuito '+esc(t.FrontCircuit)+'</span></div>').join(''):'<div class="empty">Nenhum comboio ativo nesta sessão.</div>'}
+async function refresh(){try{if(!post)await loadConfig();if(!topology)await loadTopology();const r=await fetch('/API/CPV/STATE',{cache:'no-store'});if(!r.ok)throw new Error(r.status);update(await r.json());connection.textContent='● LIGADO · atualização a cada 1 s';connection.className='ok'}catch(e){connection.textContent='● SEM LIGAÇÃO AO OPEN RAILS';connection.className='bad'}}refresh();setInterval(refresh,1000);
 </script>
 </body>
 </html>

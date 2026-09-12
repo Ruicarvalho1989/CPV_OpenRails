@@ -377,6 +377,12 @@ namespace Orts.Viewer3D.WebServices
             return Complete(result);
         }
 
+        private static CPVirtualCommandResult Complete(CPVirtualCommandResult result)
+        {
+            lastCommand = result;
+            return result;
+        }
+
         private static double? CircuitLatitude(Simulator simulator, TrackCircuitSection circuit)
         {
             var point = CircuitLocation(simulator, circuit);

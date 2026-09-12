@@ -317,6 +317,17 @@ namespace Orts.Viewer3D.WebServices
                 WebServer.DeserializationCallback<CPVirtualCommand>);
             return CPVirtualDispatcherExport.Queue(command);
         }
+
+        [Route(HttpVerbs.Get, "/CPV/RADIO")]
+        public List<CPVirtualRadioMessage> CPVirtualRadioMessages() => CPVirtualDispatcherExport.RadioMessages();
+
+        [Route(HttpVerbs.Post, "/CPV/RADIO")]
+        public async Task<CPVirtualRadioResult> CPVirtualRadio()
+        {
+            var request = await HttpContext.GetRequestDataAsync<CPVirtualRadioRequest>(
+                WebServer.DeserializationCallback<CPVirtualRadioRequest>);
+            return CPVirtualDispatcherExport.SendRadio(request);
+        }
         #endregion
 
 

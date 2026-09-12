@@ -7,6 +7,8 @@
 
 using System;
 using System.Collections.Generic;
+using Orts.Common;
+using Orts.Formats.Msts;
 using Orts.Simulation.Signalling;
 
 namespace Orts.Viewer3D.WebServices
@@ -48,6 +50,8 @@ namespace Orts.Viewer3D.WebServices
         public string Type;
         public int NormalHeads;
         public int NextSwitchCircuit;
+        public double? Latitude;
+        public double? Longitude;
     }
 
     /// <summary>Live state only. Request this repeatedly; topology changes only when a route is loaded.</summary>
@@ -69,6 +73,7 @@ namespace Orts.Viewer3D.WebServices
         public bool RemoteOccupied;
         public int JunctionRoute;
         public int JunctionManualRoute;
+        public bool Locked;
     }
 
     public sealed class CPVirtualTrainState
@@ -79,12 +84,19 @@ namespace Orts.Viewer3D.WebServices
         public string ControlMode;
         public int FrontCircuit;
         public float FrontCircuitOffset;
+        public double? Latitude;
+        public double? Longitude;
+        public int NextSignalReference;
+        public int[] RouteCircuits = new int[0];
     }
 
     public sealed class CPVirtualSignalState
     {
         public int Reference;
         public int DrawState;
+        public string Aspect;
+        public bool Enabled;
+        public int EnabledTrainNumber;
         public string HoldState;
         public string Permission;
         public bool ApproachControlSet;
@@ -161,7 +173,9 @@ namespace Orts.Viewer3D.WebServices
                         Direction = signal.TCDirection,
                         Type = signal.Type.ToString(),
                         NormalHeads = signal.SignalNumNormalHeads,
-                        NextSwitchCircuit = signal.nextSwitchIndex ?? -1
+                        NextSwitchCircuit = signal.nextSwitchIndex ?? -1,
+                        Latitude = SignalLatitude(signal),
+                        Longitude = SignalLongitude(signal)
                     });
                 }
             }
@@ -193,7 +207,8 @@ namespace Orts.Viewer3D.WebServices
                         Forced = state != null && state.Forced,
                         RemoteOccupied = state != null && state.RemoteOccupied,
                         JunctionRoute = circuit.JunctionLastRoute,
-                        JunctionManualRoute = circuit.JunctionSetManual
+                        JunctionManualRoute = circuit.JunctionSetManual,
+                        Locked = state != null && (state.SignalReserved >= 0 || state.TrainClaimed.Count > 0 || state.HasTrainsOccupying())
                     });
                 }
             }
@@ -209,6 +224,9 @@ namespace Orts.Viewer3D.WebServices
                     {
                         Reference = signal.thisRef,
                         DrawState = signal.draw_state,
+                        Aspect = signal.this_sig_lr(MstsSignalFunction.NORMAL).ToString(),
+                        Enabled = signal.enabled,
+                        EnabledTrainNumber = signal.enabledTrain == null ? -1 : signal.enabledTrain.Train.Number,
                         HoldState = signal.holdState.ToString(),
                         Permission = signal.hasPermission.ToString(),
                         ApproachControlSet = signal.ApproachControlSet,
@@ -231,11 +249,69 @@ namespace Orts.Viewer3D.WebServices
                     SpeedKmh = train.SpeedMpS * 3.6f,
                     ControlMode = train.ControlMode.ToString(),
                     FrontCircuit = train.PresentPosition[0].TCSectionIndex,
-                    FrontCircuitOffset = train.PresentPosition[0].TCOffset
+                    FrontCircuitOffset = train.PresentPosition[0].TCOffset,
+                    Latitude = TrainLatitude(train),
+                    Longitude = TrainLongitude(train),
+                    NextSignalReference = train.NextSignalObject == null || train.NextSignalObject[0] == null ? -1 : train.NextSignalObject[0].thisRef,
+                    RouteCircuits = TrainRouteCircuits(train)
                 });
             }
 
             return output;
+        }
+
+        private static double? SignalLatitude(SignalObject signal)
+        {
+            var point = SignalLocation(signal);
+            return point == null ? (double?)null : point.Lat;
+        }
+
+        private static double? SignalLongitude(SignalObject signal)
+        {
+            var point = SignalLocation(signal);
+            return point == null ? (double?)null : point.Lon;
+        }
+
+        private static LatLon SignalLocation(SignalObject signal)
+        {
+            if (SignalObject.trItems == null || signal.thisRef < 0 || signal.thisRef >= SignalObject.trItems.Length)
+                return null;
+
+            var item = SignalObject.trItems[signal.thisRef];
+            return item == null ? null : InfoApiMap.ConvertToLatLon(item.TileX, item.TileZ, item.X, item.Y, item.Z);
+        }
+
+        private static double? TrainLatitude(Orts.Simulation.Physics.Train train)
+        {
+            var point = TrainLocation(train);
+            return point == null ? (double?)null : point.Lat;
+        }
+
+        private static double? TrainLongitude(Orts.Simulation.Physics.Train train)
+        {
+            var point = TrainLocation(train);
+            return point == null ? (double?)null : point.Lon;
+        }
+
+        private static LatLon TrainLocation(Orts.Simulation.Physics.Train train)
+        {
+            if (train.FrontTDBTraveller == null)
+                return null;
+
+            var traveller = train.FrontTDBTraveller;
+            return InfoApiMap.ConvertToLatLon(traveller.TileX, traveller.TileZ,
+                traveller.Location.X, traveller.Location.Y, traveller.Location.Z);
+        }
+
+        private static int[] TrainRouteCircuits(Orts.Simulation.Physics.Train train)
+        {
+            if (train.ValidRoute == null || train.ValidRoute[0] == null)
+                return new int[0];
+
+            var route = new int[train.ValidRoute[0].Count];
+            for (var index = 0; index < route.Length; index++)
+                route[index] = train.ValidRoute[0][index].TCSectionIndex;
+            return route;
         }
 
         private static int PinLink(TrackCircuitSection circuit, int direction, int pin)

@@ -38,6 +38,8 @@ namespace Orts.Viewer3D.WebServices
         public int[] Pins = new int[4];
         public int[] PinDirections = new int[4];
         public int[] EndSignalReferences = new int[2];
+        public double? Latitude;
+        public double? Longitude;
     }
 
     public sealed class CPVirtualSignalTopology
@@ -152,7 +154,9 @@ namespace Orts.Viewer3D.WebServices
                         {
                             circuit.EndSignals[0] == null ? -1 : circuit.EndSignals[0].thisRef,
                             circuit.EndSignals[1] == null ? -1 : circuit.EndSignals[1].thisRef
-                        }
+                        },
+                        Latitude = CircuitLatitude(simulator, circuit),
+                        Longitude = CircuitLongitude(simulator, circuit)
                     });
                 }
             }
@@ -258,6 +262,31 @@ namespace Orts.Viewer3D.WebServices
             }
 
             return output;
+        }
+
+        private static double? CircuitLatitude(dynamic simulator, TrackCircuitSection circuit)
+        {
+            var point = CircuitLocation(simulator, circuit);
+            return point == null ? (double?)null : point.Lat;
+        }
+
+        private static double? CircuitLongitude(dynamic simulator, TrackCircuitSection circuit)
+        {
+            var point = CircuitLocation(simulator, circuit);
+            return point == null ? (double?)null : point.Lon;
+        }
+
+        private static LatLon CircuitLocation(dynamic simulator, TrackCircuitSection circuit)
+        {
+            if (circuit.CircuitType != TrackCircuitSection.TrackCircuitType.Junction ||
+                circuit.OriginalIndex < 0 || circuit.OriginalIndex >= simulator.TDB.TrackDB.TrackNodes.Length)
+                return null;
+
+            var node = simulator.TDB.TrackDB.TrackNodes[circuit.OriginalIndex];
+            if (node == null || node.UiD == null)
+                return null;
+
+            return InfoApiMap.ConvertToLatLon(node.UiD.TileX, node.UiD.TileZ, node.UiD.X, node.UiD.Y, node.UiD.Z);
         }
 
         private static double? SignalLatitude(SignalObject signal)

@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using Orts.Common;
 using Orts.Formats.Msts;
+using Orts.MultiPlayer;
 using Orts.Simulation;
 using Orts.Simulation.Signalling;
 
@@ -106,9 +107,24 @@ namespace Orts.Viewer3D.WebServices
         public bool CallOnEnabled;
     }
 
+    public sealed class CPVirtualCommand
+    {
+        public string Kind;
+        public int Reference;
+        public int Position;
+    }
+
+    public sealed class CPVirtualCommandResult
+    {
+        public bool Accepted;
+        public string Message;
+        public int Reference;
+        public int Position;
+    }
+
     /// <summary>
-    /// Reads only public ORTS simulation state. Command application deliberately
-    /// belongs in a later, permission-checked CP Virtual bridge.
+    /// Exposes the ORTS interlocking state and a narrow set of dispatcher requests.
+    /// Commands reuse the simulator's own occupancy and reservation checks.
     /// </summary>
     public static class CPVirtualDispatcherExport
     {
@@ -263,6 +279,98 @@ namespace Orts.Viewer3D.WebServices
             }
 
             return output;
+        }
+
+        public static CPVirtualCommandResult Execute(Viewer viewer, CPVirtualCommand command)
+        {
+            var result = new CPVirtualCommandResult
+            {
+                Accepted = false,
+                Message = "Pedido inválido.",
+                Reference = command == null ? -1 : command.Reference,
+                Position = command == null ? -1 : command.Position
+            };
+
+            if (command == null || viewer == null || viewer.Simulator == null || viewer.Simulator.Signals == null)
+                return result;
+
+            if (MPManager.IsClient())
+            {
+                result.Message = "Este computador não é o servidor da sessão.";
+                return result;
+            }
+
+            var signals = viewer.Simulator.Signals;
+            var kind = (command.Kind ?? String.Empty).Trim().ToLowerInvariant();
+
+            if (kind == "signal-stop" || kind == "signal-system")
+            {
+                SignalObject selected = null;
+                foreach (var signal in signals.SignalObjects)
+                {
+                    if (signal != null && signal.thisRef == command.Reference)
+                    {
+                        selected = signal;
+                        break;
+                    }
+                }
+
+                if (selected == null || selected.SignalNumNormalHeads <= 0)
+                {
+                    result.Message = "Sinal principal não encontrado.";
+                    return result;
+                }
+
+                if (kind == "signal-stop")
+                    selected.RequestHoldSignalDispatcher(true);
+                else
+                    selected.ClearHoldSignalDispatcher();
+
+                result.Accepted = true;
+                result.Message = kind == "signal-stop"
+                    ? "Sinal colocado sob comando de paragem."
+                    : "Sinal devolvido ao sistema de encravamento.";
+                return result;
+            }
+
+            if (kind == "switch-set")
+            {
+                if (command.Reference < 0 || command.Reference >= signals.TrackCircuitList.Count)
+                {
+                    result.Message = "Agulha não encontrada.";
+                    return result;
+                }
+
+                var circuit = signals.TrackCircuitList[command.Reference];
+                if (circuit == null || circuit.CircuitType != TrackCircuitSection.TrackCircuitType.Junction)
+                {
+                    result.Message = "O circuito indicado não é uma agulha.";
+                    return result;
+                }
+
+                if (command.Position != 0 && command.Position != 1)
+                {
+                    result.Message = "Posição de agulha inválida.";
+                    return result;
+                }
+
+                if (circuit.JunctionLastRoute == command.Position)
+                {
+                    result.Accepted = true;
+                    result.Message = "A agulha já se encontra nessa posição.";
+                    return result;
+                }
+
+                result.Accepted = signals.RequestSetSwitch(command.Reference);
+                result.Position = circuit.JunctionLastRoute;
+                result.Message = result.Accepted
+                    ? "Agulha comandada."
+                    : "Comando recusado: agulha ocupada, reservada ou encravada.";
+                return result;
+            }
+
+            result.Message = "Tipo de comando desconhecido.";
+            return result;
         }
 
         private static double? CircuitLatitude(Simulator simulator, TrackCircuitSection circuit)

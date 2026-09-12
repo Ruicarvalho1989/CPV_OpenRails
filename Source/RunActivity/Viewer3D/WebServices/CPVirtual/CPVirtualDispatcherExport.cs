@@ -229,7 +229,7 @@ namespace Orts.Viewer3D.WebServices
                         RemoteOccupied = state != null && state.RemoteOccupied,
                         JunctionRoute = circuit.JunctionLastRoute,
                         JunctionManualRoute = circuit.JunctionSetManual,
-                        Locked = state != null && (state.SignalReserved >= 0 || state.TrainClaimed.Count > 0 || state.HasTrainsOccupying())
+                        Locked = state != null && (state.SignalReserved >= 0 || (state.TrainClaimed != null && state.TrainClaimed.Count > 0) || state.HasTrainsOccupying())
                     });
                 }
             }

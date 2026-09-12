@@ -111,6 +111,35 @@ namespace Orts.Viewer3D.WebServices
         public bool CallOnEnabled;
     }
 
+    public sealed class CPVirtualRadioRequest
+    {
+        public string FromRole;
+        public string FromName;
+        public int TrainNumber;
+        public string PostId;
+        public string Kind;
+        public string Text;
+    }
+
+    public sealed class CPVirtualRadioMessage
+    {
+        public long MessageId;
+        public DateTime SentAtUtc;
+        public string FromRole;
+        public string FromName;
+        public int TrainNumber;
+        public string PostId;
+        public string Kind;
+        public string Text;
+    }
+
+    public sealed class CPVirtualRadioResult
+    {
+        public bool Accepted;
+        public string Message;
+        public long MessageId;
+    }
+
     public sealed class CPVirtualCommand
     {
         public long CommandId;
@@ -134,9 +163,50 @@ namespace Orts.Viewer3D.WebServices
     /// </summary>
     public static class CPVirtualDispatcherExport
     {
+        private static readonly object radioLock = new object();
+        private static readonly List<CPVirtualRadioMessage> radioMessages = new List<CPVirtualRadioMessage>();
+        private static long nextRadioMessageId;
         private static readonly ConcurrentQueue<CPVirtualCommand> pendingCommands = new ConcurrentQueue<CPVirtualCommand>();
         private static long nextCommandId;
         private static volatile CPVirtualCommandResult lastCommand;
+
+        public static List<CPVirtualRadioMessage> RadioMessages()
+        {
+            lock (radioLock)
+                return new List<CPVirtualRadioMessage>(radioMessages);
+        }
+
+        public static CPVirtualRadioResult SendRadio(CPVirtualRadioRequest request)
+        {
+            var result = new CPVirtualRadioResult { Accepted = false, Message = "Mensagem inválida." };
+            if (request == null || String.IsNullOrWhiteSpace(request.FromRole) ||
+                String.IsNullOrWhiteSpace(request.FromName) || String.IsNullOrWhiteSpace(request.Text))
+                return result;
+
+            var message = new CPVirtualRadioMessage
+            {
+                MessageId = Interlocked.Increment(ref nextRadioMessageId),
+                SentAtUtc = DateTime.UtcNow,
+                FromRole = request.FromRole.Trim(),
+                FromName = request.FromName.Trim(),
+                TrainNumber = request.TrainNumber,
+                PostId = request.PostId == null ? String.Empty : request.PostId.Trim(),
+                Kind = String.IsNullOrWhiteSpace(request.Kind) ? "radio" : request.Kind.Trim(),
+                Text = request.Text.Trim()
+            };
+
+            lock (radioLock)
+            {
+                radioMessages.Add(message);
+                if (radioMessages.Count > 100)
+                    radioMessages.RemoveRange(0, radioMessages.Count - 100);
+            }
+
+            result.Accepted = true;
+            result.Message = "Mensagem transmitida.";
+            result.MessageId = message.MessageId;
+            return result;
+        }
 
         public static CPVirtualTopology Topology(Viewer viewer)
         {

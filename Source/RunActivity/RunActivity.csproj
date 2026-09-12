@@ -8,7 +8,6 @@
     <ImportWindowsDesktopTargets>true</ImportWindowsDesktopTargets>
     <IsPublishable>False</IsPublishable>
     <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
-    <SelfContained>true</SelfContained>
     <AssemblyTitle>Open Rails Activity Runner</AssemblyTitle>
     <Description>Open Rails Transport Simulator</Description>
     <Company>Open Rails</Company>
@@ -673,6 +672,30 @@
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
   </ItemGroup>
+  <Target Name="EnsureRunActivityRuntimeConfig" AfterTargets="Build">
+    <PropertyGroup>
+      <RunActivityRuntimeConfig><![CDATA[{
+  "runtimeOptions": {
+    "tfm": "net6.0",
+    "frameworks": [
+      {
+        "name": "Microsoft.NETCore.App",
+        "version": "6.0.0"
+      },
+      {
+        "name": "Microsoft.WindowsDesktop.App",
+        "version": "6.0.0"
+      }
+    ],
+    "rollForward": "LatestPatch"
+  }
+}]]></RunActivityRuntimeConfig>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(TargetDir)RunActivity.runtimeconfig.json"
+                      Lines="$(RunActivityRuntimeConfig)"
+                      Overwrite="true"
+                      Encoding="UTF-8" />
+  </Target>
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
     <Exec Command="PostBuildActions.bat" />
   </Target>

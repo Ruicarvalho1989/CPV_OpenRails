@@ -309,6 +309,14 @@ namespace Orts.Viewer3D.WebServices
 
         [Route(HttpVerbs.Get, "/CPV/STATE")]
         public CPVirtualState CPVirtualState() => CPVirtualDispatcherExport.State(Viewer);
+
+        [Route(HttpVerbs.Post, "/CPV/COMMAND")]
+        public async Task<CPVirtualCommandResult> CPVirtualCommand()
+        {
+            var command = await HttpContext.GetRequestDataAsync<CPVirtualCommand>(
+                WebServer.DeserializationCallback<CPVirtualCommand>);
+            return CPVirtualDispatcherExport.Execute(Viewer, command);
+        }
         #endregion
 
 

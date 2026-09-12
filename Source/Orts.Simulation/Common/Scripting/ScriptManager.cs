@@ -130,14 +130,22 @@ namespace Orts.Common.Scripting
                     errorString.Append(Environment.NewLine);
                     foreach (var error in errors)
                     {
-                        var textSpan = error.Location.SourceSpan;
-                        var fileName = Path.GetFileName(error.Location.SourceTree.FilePath);
-                        var lineSpan = error.Location.SourceTree.GetLineSpan(textSpan);
-                        var line = lineSpan.StartLinePosition.Line + 1;
-                        var column = lineSpan.StartLinePosition.Character + 1;
-                        errorString.AppendFormat("\t{0}: {1}, ", error.Id, error.GetMessage());
-                        if (path.Length > 1) errorString.AppendFormat("file: {0}, ", fileName);
-                        errorString.AppendFormat("line: {0}, column: {1}", line, column);
+                        errorString.AppendFormat("\t{0}: {1}", error.Id, error.GetMessage());
+
+                        // Some compiler diagnostics apply to the whole compilation and have
+                        // no source file. Do not hide the real error with a NullReferenceException.
+                        if (error.Location != Location.None && error.Location.SourceTree != null)
+                        {
+                            var textSpan = error.Location.SourceSpan;
+                            var fileName = Path.GetFileName(error.Location.SourceTree.FilePath);
+                            var lineSpan = error.Location.SourceTree.GetLineSpan(textSpan);
+                            var line = lineSpan.StartLinePosition.Line + 1;
+                            var column = lineSpan.StartLinePosition.Character + 1;
+                            errorString.Append(", ");
+                            if (path.Length > 1) errorString.AppendFormat("file: {0}, ", fileName);
+                            errorString.AppendFormat("line: {0}, column: {1}", line, column);
+                        }
+
                         errorString.Append(Environment.NewLine);
                     }
 

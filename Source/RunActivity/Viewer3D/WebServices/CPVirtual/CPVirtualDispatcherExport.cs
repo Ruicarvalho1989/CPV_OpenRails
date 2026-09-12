@@ -6,7 +6,9 @@
 // route as the simulator.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Threading;
 using Orts.Common;
 using Orts.Formats.Msts;
 using Orts.MultiPlayer;
@@ -111,6 +113,7 @@ namespace Orts.Viewer3D.WebServices
 
     public sealed class CPVirtualCommand
     {
+        public long CommandId;
         public string Kind;
         public int Reference;
         public int Position;
@@ -118,6 +121,7 @@ namespace Orts.Viewer3D.WebServices
 
     public sealed class CPVirtualCommandResult
     {
+        public long CommandId;
         public bool Accepted;
         public string Message;
         public int Reference;
@@ -130,7 +134,10 @@ namespace Orts.Viewer3D.WebServices
     /// </summary>
     public static class CPVirtualDispatcherExport
     {
-        private static CPVirtualCommandResult lastCommand;
+        private static readonly ConcurrentQueue<CPVirtualCommand> pendingCommands = new ConcurrentQueue<CPVirtualCommand>();
+        private static long nextCommandId;
+        private static volatile CPVirtualCommandResult lastCommand;
+
         public static CPVirtualTopology Topology(Viewer viewer)
         {
             var simulator = viewer.Simulator;
@@ -285,10 +292,45 @@ namespace Orts.Viewer3D.WebServices
             return output;
         }
 
+        public static CPVirtualCommandResult Queue(CPVirtualCommand command)
+        {
+            var result = new CPVirtualCommandResult
+            {
+                CommandId = Interlocked.Increment(ref nextCommandId),
+                Accepted = false,
+                Message = "Pedido inválido.",
+                Reference = command == null ? -1 : command.Reference,
+                Position = command == null ? -1 : command.Position
+            };
+
+            if (command == null || String.IsNullOrWhiteSpace(command.Kind))
+                return Complete(result);
+
+            pendingCommands.Enqueue(new CPVirtualCommand
+            {
+                CommandId = result.CommandId,
+                Kind = command.Kind,
+                Reference = command.Reference,
+                Position = command.Position
+            });
+
+            result.Accepted = true;
+            result.Message = "Pedido recebido pelo Open Rails; aguarda execução.";
+            return result;
+        }
+
+        public static void ProcessPending(Viewer viewer)
+        {
+            CPVirtualCommand command;
+            while (pendingCommands.TryDequeue(out command))
+                Execute(viewer, command);
+        }
+
         public static CPVirtualCommandResult Execute(Viewer viewer, CPVirtualCommand command)
         {
             var result = new CPVirtualCommandResult
             {
+                CommandId = command == null ? 0 : command.CommandId,
                 Accepted = false,
                 Message = "Pedido inválido.",
                 Reference = command == null ? -1 : command.Reference,
@@ -332,12 +374,15 @@ namespace Orts.Viewer3D.WebServices
                 else
                     selected.ClearHoldSignalDispatcher();
 
-                result.Accepted = true;
-                result.Message = kind == "signal-stop"
-                    ? "Sinal colocado sob comando de paragem (estado " + selected.holdState + ")."
-                    : kind == "signal-proceed"
-                        ? "Sinal aberto manualmente (estado " + selected.holdState + ")."
-                        : "Sinal devolvido ao sistema de encravamento (estado " + selected.holdState + ").";
+                selected.Update();
+                var resultingAspect = selected.this_sig_lr(MstsSignalFunction.NORMAL);
+                result.Accepted =
+                    kind == "signal-stop" ? selected.holdState == HoldState.ManualLock :
+                    kind == "signal-proceed" ? selected.holdState == HoldState.ManualPass :
+                    selected.holdState == HoldState.None;
+                result.Message = result.Accepted
+                    ? "Sinal executado: " + resultingAspect + " (estado " + selected.holdState + ")."
+                    : "O sinal não confirmou o comando: " + resultingAspect + " (estado " + selected.holdState + ").";
                 return Complete(result);
             }
 

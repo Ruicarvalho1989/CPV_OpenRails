@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>CP Virtual · Posto de Comando</title>
 <style>
-:root{font-family:"Segoe UI",Arial,sans-serif;color:#edf1f3;background:#0e1215}*{box-sizing:border-box}body{margin:0}header{display:flex;gap:18px;align-items:center;justify-content:space-between;padding:18px 28px;background:#1b2227;border-bottom:3px solid #df262d}header strong{font-size:24px;color:#df262d;font-style:italic}.ok{color:#8ee2ad}.bad{color:#ff7479}main{display:grid;grid-template-columns:1.3fr 1fr;gap:18px;padding:22px}.card{background:#1a2024;border:1px solid #343c42;border-radius:10px;padding:18px}h2{font-size:14px;margin:0 0 12px;color:#b8c0c5;letter-spacing:.04em}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stat{padding:14px;background:#11171b;border-radius:7px}.stat b{display:block;font-size:23px;color:#fff}.stat span{font-size:11px;color:#aab3b9}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px;border-bottom:1px solid #30373c}th{font-size:11px;color:#8f999f}td{font-size:13px}.live{color:#8ee2ad}.occupied{color:#ffcc66}.signal{font-family:Consolas,monospace;font-size:12px}.note{font-size:12px;line-height:1.5;color:#aab3b9}@media(max-width:780px){main{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}header{align-items:flex-start;flex-direction:column}}
+:root{font-family:"Segoe UI",Arial,sans-serif;color:#edf1f3;background:#0e1215}*{box-sizing:border-box}body{margin:0}header{display:flex;gap:18px;align-items:center;justify-content:space-between;padding:18px 28px;background:#1b2227;border-bottom:3px solid #df262d}header strong{font-size:24px;color:#df262d;font-style:italic}.ok{color:#8ee2ad}.bad{color:#ff7479}main{display:grid;grid-template-columns:1.3fr 1fr;gap:18px;padding:22px}.card{background:#1a2024;border:1px solid #343c42;border-radius:10px;padding:18px}h2{font-size:14px;margin:0 0 12px;color:#b8c0c5;letter-spacing:.04em}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stat{padding:14px;background:#11171b;border-radius:7px}.stat b{display:block;font-size:23px;color:#fff}.stat span{font-size:11px;color:#aab3b9}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px;border-bottom:1px solid #30373c}th{font-size:11px;color:#8f999f}td{font-size:13px}.live{color:#8ee2ad}.occupied{color:#ffcc66}.signal{font-family:Consolas,monospace;font-size:12px}.note{font-size:12px;line-height:1.5;color:#aab3b9}.pill{display:inline-block;border:1px solid #465158;border-radius:99px;padding:4px 8px;margin:0 5px 5px 0;font-size:11px;color:#cbd3d7}.muted{color:#aab3b9}.section-gap{margin-top:22px}@media(max-width:780px){main{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}header{align-items:flex-start;flex-direction:column}}
 </style>
 </head>
 <body>
@@ -21,13 +21,17 @@
       <div class="stat"><b id="occupiedCount">—</b><span>CIRCUITOS OCUPADOS</span></div>
       <div class="stat"><b id="signalCount">—</b><span>SINAIS CARREGADOS</span></div>
     </div>
-    <h2 style="margin-top:22px">COMBOIOS DA SESSÃO</h2>
+    <h2 class="section-gap">COMBOIOS DA SESSÃO</h2>
     <table><thead><tr><th>SERVIÇO</th><th>VELOCIDADE</th><th>CIRCUITO</th><th>MODO</th></tr></thead><tbody id="trains"><tr><td colspan="4">A aguardar simulação…</td></tr></tbody></table>
+    <h2 class="section-gap">ÁREA ACOMPANHADA</h2>
+    <div id="area" class="note">A área será calculada a partir da posição do comboio.</div>
   </section>
   <section class="card">
-    <h2>SINAIS E VIA</h2>
-    <table><thead><tr><th>REFERÊNCIA</th><th>ASPETO</th><th>PERMISSÃO</th></tr></thead><tbody id="signals"><tr><td colspan="3">A aguardar dados…</td></tr></tbody></table>
-    <p class="note">Painel em modo de observação. Ainda não envia comandos a sinais, agulhas ou comboios.</p>
+    <h2>SINAIS PRÓXIMOS</h2>
+    <table><thead><tr><th>REFERÊNCIA</th><th>CIRCUITO</th><th>ASPETO</th><th>PERMISSÃO</th></tr></thead><tbody id="signals"><tr><td colspan="4">A aguardar dados…</td></tr></tbody></table>
+    <h2 class="section-gap">AGULHAS PRÓXIMAS</h2>
+    <table><thead><tr><th>CIRCUITO</th><th>POSIÇÃO</th><th>ESTADO</th></tr></thead><tbody id="switches"><tr><td colspan="3">A aguardar dados…</td></tr></tbody></table>
+    <p class="note">Modo de observação: os valores vêm da sessão ativa. Os comandos ficam bloqueados até existir validação de posto, itinerário, ocupação e encravamento.</p>
   </section>
 </main>
 <script>
@@ -43,13 +47,43 @@ async function loadTopology(){
   document.getElementById('route').textContent='ROTA · '+text(topology.RouteName);
   document.getElementById('signalCount').textContent=(topology.Signals||[]).length;
 }
+function getNearbyCircuitIndexes(startIndex,maxDepth){
+  if(startIndex===null||startIndex===undefined||!topology)return new Set();
+  const circuits=new Map((topology.Circuits||[]).map(c=>[String(c.Index),c]));
+  const nearby=new Set([String(startIndex)]), queue=[[String(startIndex),0]];
+  while(queue.length){
+    const [index,depth]=queue.shift();
+    if(depth>=maxDepth)continue;
+    const circuit=circuits.get(index);
+    for(const pin of (circuit&&circuit.Pins)||[]){
+      const next=String(pin);
+      if(circuits.has(next)&&!nearby.has(next)){nearby.add(next);queue.push([next,depth+1]);}
+    }
+  }
+  return nearby;
+}
+function aspect(signal){
+  if(signal.DrawState===null||signal.DrawState===undefined)return '—';
+  return signal.DrawState===0?'Fechado / sem aspeto':'Estado '+signal.DrawState;
+}
 function draw(state){
-  const trains=state.Trains||[],circuits=state.Circuits||[],signals=state.Signals||[];
+  const trains=state.Trains||[], circuits=state.Circuits||[], signalStates=state.Signals||[];
   document.getElementById('trainCount').textContent=trains.length;
   document.getElementById('occupiedCount').textContent=circuits.filter(c=>c.Occupied).length;
   document.getElementById('trains').innerHTML=trains.length?trains.map(t=>'<tr><td class="live">'+escape(t.Number)+' · '+escape(t.Name)+'</td><td>'+Number(t.SpeedKmh||0).toFixed(1)+' km/h</td><td>'+escape(t.FrontCircuit)+'</td><td>'+escape(t.ControlMode)+'</td></tr>').join(''):'<tr><td colspan="4">Nenhum comboio ativo nesta sessão.</td></tr>';
-  const relevant=signals.filter(s=>s.DrawState||s.ApproachControlSet||s.CallOnEnabled).slice(0,16);
-  document.getElementById('signals').innerHTML=relevant.length?relevant.map(s=>'<tr><td class="signal">'+escape(s.Reference)+'</td><td>'+escape(s.DrawState)+'</td><td>'+escape(s.Permission)+'</td></tr>').join(''):'<tr><td colspan="3">Nenhum sinal ativo a apresentar.</td></tr>';
+
+  const referenceTrain=trains.find(t=>t.ControlMode==='PLAYER')||trains[0];
+  const nearby=getNearbyCircuitIndexes(referenceTrain&&referenceTrain.FrontCircuit,4);
+  const circuitStates=new Map(circuits.map(c=>[String(c.Index),c]));
+  const signalTopology=new Map((topology.Signals||[]).map(s=>[String(s.Reference),s]));
+  const nearbySignals=signalStates.map(s=>Object.assign({},s,{Topology:signalTopology.get(String(s.Reference))})).filter(s=>s.Topology&&nearby.has(String(s.Topology.TrackCircuit))).slice(0,24);
+  document.getElementById('signals').innerHTML=nearbySignals.length?nearbySignals.map(s=>'<tr><td class="signal">'+escape(s.Reference)+'</td><td>'+escape(s.Topology.TrackCircuit)+'</td><td>'+escape(aspect(s))+'</td><td>'+escape(s.Permission)+'</td></tr>').join(''):'<tr><td colspan="4">Sem sinais nos quatro circuitos adjacentes ao comboio.</td></tr>';
+
+  const nearbySwitches=(topology.Circuits||[]).filter(c=>nearby.has(String(c.Index))&&String(c.Type).toLowerCase().includes('junction')).map(c=>({Topology:c,State:circuitStates.get(String(c.Index))})).slice(0,16);
+  document.getElementById('switches').innerHTML=nearbySwitches.length?nearbySwitches.map(s=>'<tr><td class="signal">'+escape(s.Topology.Index)+'</td><td>'+escape(s.State&&s.State.JunctionRoute)+'</td><td>'+((s.State&&s.State.Occupied)?'<span class="occupied">OCUPADA</span>':'Livre')+'</td></tr>').join(''):'<tr><td colspan="3">Nenhuma agulha nos circuitos adjacentes.</td></tr>';
+
+  const names=referenceTrain?['Comboio: '+text(referenceTrain.Number),'Circuito: '+text(referenceTrain.FrontCircuit),'Alcance: 4 circuitos'].map(v=>'<span class="pill">'+escape(v)+'</span>').join(''):'<span class="muted">Sem comboio disponível para calcular a área.</span>';
+  document.getElementById('area').innerHTML=names;
 }
 async function refresh(){
   try{

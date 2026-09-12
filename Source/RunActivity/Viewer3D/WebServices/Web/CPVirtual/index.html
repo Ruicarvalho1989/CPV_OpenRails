@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>CP Virtual · Posto de Comando</title>
 <style>
-:root{font-family:"Segoe UI",Arial,sans-serif;color:#edf1f3;background:#0e1215}*{box-sizing:border-box}body{margin:0}header{display:flex;gap:18px;align-items:center;justify-content:space-between;padding:18px 28px;background:#1b2227;border-bottom:3px solid #df262d}header strong{font-size:24px;color:#df262d;font-style:italic}.ok{color:#8ee2ad}.bad{color:#ff7479}main{display:grid;grid-template-columns:1.3fr 1fr;gap:18px;padding:22px}.card{background:#1a2024;border:1px solid #343c42;border-radius:10px;padding:18px}h2{font-size:14px;margin:0 0 12px;color:#b8c0c5;letter-spacing:.04em}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stat{padding:14px;background:#11171b;border-radius:7px}.stat b{display:block;font-size:23px;color:#fff}.stat span{font-size:11px;color:#aab3b9}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px;border-bottom:1px solid #30373c}th{font-size:11px;color:#8f999f}td{font-size:13px}.live{color:#8ee2ad}.occupied{color:#ffcc66}.signal{font-family:Consolas,monospace;font-size:12px}.note{font-size:12px;line-height:1.5;color:#aab3b9}.pill{display:inline-block;border:1px solid #465158;border-radius:99px;padding:4px 8px;margin:0 5px 5px 0;font-size:11px;color:#cbd3d7}.muted{color:#aab3b9}.section-gap{margin-top:22px}@media(max-width:780px){main{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}header{align-items:flex-start;flex-direction:column}}
+:root{font-family:"Segoe UI",Arial,sans-serif;color:#edf1f3;background:#0e1215}*{box-sizing:border-box}body{margin:0}header{display:flex;gap:18px;align-items:center;justify-content:space-between;padding:18px 28px;background:#1b2227;border-bottom:3px solid #df262d}header strong{font-size:24px;color:#df262d;font-style:italic}.ok{color:#8ee2ad}.bad{color:#ff7479}main{display:grid;grid-template-columns:1.3fr 1fr;gap:18px;padding:22px}.card{background:#1a2024;border:1px solid #343c42;border-radius:10px;padding:18px}h2{font-size:14px;margin:0 0 12px;color:#b8c0c5;letter-spacing:.04em}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stat{padding:14px;background:#11171b;border-radius:7px}.stat b{display:block;font-size:23px;color:#fff}.stat span{font-size:11px;color:#aab3b9}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px;border-bottom:1px solid #30373c}th{font-size:11px;color:#8f999f}td{font-size:13px}.live{color:#8ee2ad}.occupied{color:#ffcc66}.signal{font-family:Consolas,monospace;font-size:12px}.note{font-size:12px;line-height:1.5;color:#aab3b9}.pill{display:inline-block;border:1px solid #465158;border-radius:99px;padding:4px 8px;margin:0 5px 5px 0;font-size:11px;color:#cbd3d7}.muted{color:#aab3b9}.section-gap{margin-top:22px}.diagram-card{grid-column:1/-1}.diagram-layout{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:14px}.diagram{width:100%;min-height:330px;background:#10161a;border:1px solid #303a40;border-radius:7px}.track{stroke:#647077;stroke-width:4;stroke-linecap:round}.node{cursor:pointer}.node circle{fill:#1d2a30;stroke:#85939a;stroke-width:2}.node.occupied circle{fill:#5d471b;stroke:#ffcc66}.node.junction circle{fill:#173544;stroke:#62c4e8}.node.player circle{fill:#1a5035;stroke:#8ee2ad;stroke-width:4}.node text{fill:#d8e0e4;font:12px Consolas,monospace;pointer-events:none}.signal-mark{fill:#df262d}.signal-label{fill:#ffc7c9;font:10px Consolas,monospace}.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:#aab3b9;margin:10px 0 0}.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}.detail-box{background:#11171b;border-radius:7px;padding:14px;font-size:12px;color:#cbd3d7}.detail-box b{display:block;color:#fff;margin-bottom:8px}@media(max-width:780px){main{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}header{align-items:flex-start;flex-direction:column}.diagram-layout{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -33,12 +33,24 @@
     <table><thead><tr><th>CIRCUITO</th><th>POSIÇÃO</th><th>ESTADO</th></tr></thead><tbody id="switches"><tr><td colspan="3">A aguardar dados…</td></tr></tbody></table>
     <p class="note">Modo de observação: os valores vêm da sessão ativa. Os comandos ficam bloqueados até existir validação de posto, itinerário, ocupação e encravamento.</p>
   </section>
+  <section class="card diagram-card">
+    <h2>DIAGRAMA LOCAL DE CIRCULAÇÃO</h2>
+    <div class="diagram-layout">
+      <div>
+        <svg id="diagram" class="diagram" viewBox="0 0 1000 340" role="img" aria-label="Diagrama dos circuitos próximos"></svg>
+        <div class="legend"><span><i style="background:#8ee2ad"></i>comboio</span><span><i style="background:#ffcc66"></i>circuito ocupado</span><span><i style="background:#62c4e8"></i>agulha</span><span><i style="background:#df262d"></i>sinal</span></div>
+      </div>
+      <aside id="circuitDetail" class="detail-box"><b>Inspeção de circuito</b>Clica num circuito para ver o respetivo estado. Este diagrama é local à posição do comboio.</aside>
+    </div>
+    <p class="note">Representação automática da topologia do Open Rails. Serve para validação e observação; as posições no ecrã ainda não correspondem ao esquema geográfico definitivo da PT79.</p>
+  </section>
 </main>
 <script>
 const statusEl=document.getElementById('status');
 const text=v=>v===null||v===undefined||v===''?'—':String(v);
 const escape=v=>text(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let topology=null;
+let selectedCircuit=null;
 
 async function loadTopology(){
   const response=await fetch('/API/CPV/TOPOLOGY',{cache:'no-store'});
@@ -84,7 +96,74 @@ function draw(state){
 
   const names=referenceTrain?['Comboio: '+text(referenceTrain.Number),'Circuito: '+text(referenceTrain.FrontCircuit),'Alcance: 4 circuitos'].map(v=>'<span class="pill">'+escape(v)+'</span>').join(''):'<span class="muted">Sem comboio disponível para calcular a área.</span>';
   document.getElementById('area').innerHTML=names;
+  drawDiagram(referenceTrain&&referenceTrain.FrontCircuit,circuits,signalStates);
 }
+function circuitKey(value){return String(value);}
+function isJunction(circuit){return String(circuit&&circuit.Type||'').toLowerCase().includes('junction');}
+function drawDiagram(startIndex,stateCircuits,signalStates){
+  const svg=document.getElementById('diagram');
+  const detail=document.getElementById('circuitDetail');
+  if(startIndex===null||startIndex===undefined||!topology){svg.innerHTML='';return;}
+  const circuitMap=new Map((topology.Circuits||[]).map(c=>[circuitKey(c.Index),c]));
+  const stateMap=new Map((stateCircuits||[]).map(c=>[circuitKey(c.Index),c]));
+  const root=circuitKey(startIndex);
+  if(!circuitMap.has(root)){svg.innerHTML='';return;}
+  const depth=new Map([[root,0]]), queue=[root];
+  while(queue.length&&depth.size<32){
+    const current=queue.shift(), level=depth.get(current);
+    if(level>=3)continue;
+    const circuit=circuitMap.get(current);
+    for(const pin of (circuit.Pins||[])){
+      const next=circuitKey(pin);
+      if(circuitMap.has(next)&&!depth.has(next)){depth.set(next,level+1);queue.push(next);}
+    }
+  }
+  const groups=[[],[],[],[]];
+  depth.forEach((level,index)=>groups[level].push(index));
+  groups.forEach(group=>group.sort((a,b)=>Number(a)-Number(b)));
+  const coords=new Map();
+  groups.forEach((group,level)=>group.forEach((index,position)=>{
+    coords.set(index,{x:90+level*255,y:170+(position-(group.length-1)/2)*58});
+  }));
+  const links=[];
+  depth.forEach((level,index)=>{
+    const from=circuitMap.get(index);
+    for(const pin of (from.Pins||[])){
+      const next=circuitKey(pin);
+      if(!coords.has(next))continue;
+      const pair=[index,next].sort((a,b)=>Number(a)-Number(b)).join(':');
+      if(!links.some(link=>link.key===pair))links.push({key:pair,a:index,b:next});
+    }
+  });
+  const signalTopology=new Map((topology.Signals||[]).map(signal=>[circuitKey(signal.Reference),signal]));
+  const signalsByCircuit=new Map();
+  for(const signalState of (signalStates||[])){
+    const signal=signalTopology.get(circuitKey(signalState.Reference));
+    if(signal&&coords.has(circuitKey(signal.TrackCircuit))){
+      const key=circuitKey(signal.TrackCircuit);
+      const list=signalsByCircuit.get(key)||[];
+      list.push(signalState);signalsByCircuit.set(key,list);
+    }
+  }
+  const lines=links.map(link=>{const a=coords.get(link.a),b=coords.get(link.b);return '<line class="track" x1="'+a.x+'" y1="'+a.y+'" x2="'+b.x+'" y2="'+b.y+'"/>';}).join('');
+  const nodes=[...coords.entries()].map(([index,point])=>{
+    const circuit=circuitMap.get(index), state=stateMap.get(index)||{};
+    const classes=['node'];
+    if(index===root)classes.push('player');
+    if(state.Occupied)classes.push('occupied');
+    if(isJunction(circuit))classes.push('junction');
+    const signals=(signalsByCircuit.get(index)||[]).slice(0,2).map((signal,i)=>'<circle class="signal-mark" cx="'+(point.x+20+i*10)+'" cy="'+(point.y-22)+'" r="4"/><text class="signal-label" x="'+(point.x+16+i*10)+'" y="'+(point.y-31)+'">'+escape(signal.Reference)+'</text>').join('');
+    return '<g class="'+classes.join(' ')+'" onclick="selectCircuit('+escape(JSON.stringify(index))+')"><circle cx="'+point.x+'" cy="'+point.y+'" r="16"/><text x="'+(point.x-12)+'" y="'+(point.y+4)+'">'+escape(index)+'</text>'+signals+'</g>';
+  }).join('');
+  svg.innerHTML=lines+nodes;
+  const inspected=circuitKey(selectedCircuit||root);
+  const circuit=circuitMap.get(inspected), state=stateMap.get(inspected)||{};
+  if(circuit){
+    detail.innerHTML='<b>Circuito '+escape(inspected)+'</b><div>Tipo: '+escape(circuit.Type)+'</div><div>Ocupação: '+(state.Occupied?'<span class="occupied">ocupado</span>':'livre')+'</div><div>Reservado: '+escape(state.Reserved)+'</div><div>Agulha: '+(isJunction(circuit)?escape(state.JunctionRoute):'—')+'</div><div>Ligação: '+escape((circuit.Pins||[]).join(', '))+'</div>';
+  }
+}
+window.selectCircuit=function(index){selectedCircuit=index;};
+
 async function refresh(){
   try{
     if(!topology)await loadTopology();

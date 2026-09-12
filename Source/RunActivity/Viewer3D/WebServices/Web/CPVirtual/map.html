@@ -19,7 +19,7 @@
 <script>
 const canvas=document.getElementById('map'),ctx=canvas.getContext('2d'),statusEl=document.getElementById('status');
 const stationNames=['Alfarelos','Formoselha','Pereira do Campo','Amial','Vila Pouca','Taveiro','Casais','Espadaneira','Bencanta','Coimbra-B'];
-let mapData=null,player=null,view=null;
+let mapData=null,player=null,view=null,followsTrain=true;
 const text=v=>v===null||v===undefined?'':String(v);
 function fullView(){return {latMin:mapData.LatMin,latMax:mapData.LatMax,lonMin:mapData.LonMin,lonMax:mapData.LonMax};}
 function trainView(){
@@ -37,10 +37,10 @@ function changeZoom(factor){
   if(!view)return;
   const lat=(view.latMin+view.latMax)/2,lon=(view.lonMin+view.lonMax)/2;
   const latSpan=(view.latMax-view.latMin)*factor,lonSpan=(view.lonMax-view.lonMin)*factor;
-  view={latMin:lat-latSpan/2,latMax:lat+latSpan/2,lonMin:lon-lonSpan/2,lonMax:lon+lonSpan/2};draw();
+  followsTrain=false;view={latMin:lat-latSpan/2,latMax:lat+latSpan/2,lonMin:lon-lonSpan/2,lonMax:lon+lonSpan/2};draw();
 }
-function centerOnTrain(){if(player&&player.LatLon){view=trainView();draw();}}
-function showFullRoute(){if(mapData){view=fullView();draw();}}
+function centerOnTrain(){if(player&&player.LatLon){followsTrain=true;view=trainView();draw();}}
+function showFullRoute(){if(mapData){followsTrain=false;view=fullView();draw();}}
 window.changeZoom=changeZoom;window.centerOnTrain=centerOnTrain;window.showFullRoute=showFullRoute;
 function namedStations(){
   const points=mapData.PointOnApiMapList||[];
@@ -87,7 +87,7 @@ async function updatePlayer(){
   if(!mapData)return;
   try{
     const response=await fetch('/API/MAP',{cache:'no-store'});
-    if(response.ok){player=await response.json();if(!view||view===fullView())view=trainView();draw();}
+    if(response.ok){player=await response.json();if(followsTrain)view=trainView();draw();}
   }catch(error){}
 }
 load().then(updatePlayer);setInterval(updatePlayer,1000);

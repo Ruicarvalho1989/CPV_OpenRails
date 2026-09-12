@@ -8,6 +8,7 @@
     <ImportWindowsDesktopTargets>true</ImportWindowsDesktopTargets>
     <IsPublishable>False</IsPublishable>
     <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
+    <SelfContained>true</SelfContained>
     <AssemblyTitle>Open Rails Activity Runner</AssemblyTitle>
     <Description>Open Rails Transport Simulator</Description>
     <Company>Open Rails</Company>

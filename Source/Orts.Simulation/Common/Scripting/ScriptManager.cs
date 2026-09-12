@@ -38,15 +38,16 @@ namespace Orts.Common.Scripting
         static readonly string[] ReferenceAssemblies =
             ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))
                 .Split(Path.PathSeparator)
-                .Where(path => string.Equals(
-                    Path.GetDirectoryName(path),
-                    Path.GetDirectoryName(typeof(object).Assembly.Location),
-                    StringComparison.OrdinalIgnoreCase))
+                // In a framework-dependent build, application and Windows Desktop
+                // assemblies do not live beside System.Private.CoreLib. Keep the
+                // complete trusted assembly list so rolling-stock scripts can resolve
+                // dependencies such as System.IO.Ports and simulator assemblies.
                 .Concat(new[]
                 {
                     typeof(ORTS.Common.ElapsedTime).Assembly.Location,
                     typeof(ORTS.Scripting.Api.Timer).Assembly.Location,
                 })
+                .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToArray();
         static MetadataReference[] References = ReferenceAssemblies.Select(r => MetadataReference.CreateFromFile(r)).ToArray();
         static CSharpCompilationOptions CompilationOptions = new CSharpCompilationOptions(

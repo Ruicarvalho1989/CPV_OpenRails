@@ -301,6 +301,17 @@ namespace Orts.Viewer3D.WebServices
         public double Time() => Viewer.Simulator.ClockTime;
         #endregion
 
+        #region /API/CPV
+        // CP Virtual dispatcher API. It exports the same route topology and
+        // signalling state that the ORTS simulation is currently using.
+        [Route(HttpVerbs.Get, "/CPV/TOPOLOGY")]
+        public CPVirtualTopology CPVirtualTopology() => CPVirtualDispatcherExport.Topology(Viewer);
+
+        [Route(HttpVerbs.Get, "/CPV/STATE")]
+        public CPVirtualState CPVirtualState() => CPVirtualDispatcherExport.State(Viewer);
+        #endregion
+
+
         #region /API/MAP/INIT
         [Route(HttpVerbs.Get, "/MAP/INIT")]
         public InfoApiMap InfoApiMap() => GetApiMapInfo(Viewer);

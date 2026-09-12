@@ -307,7 +307,7 @@ namespace Orts.Viewer3D.WebServices
             var signals = viewer.Simulator.Signals;
             var kind = (command.Kind ?? String.Empty).Trim().ToLowerInvariant();
 
-            if (kind == "signal-stop" || kind == "signal-system")
+            if (kind == "signal-stop" || kind == "signal-proceed" || kind == "signal-system")
             {
                 SignalObject selected = null;
                 foreach (var signal in signals.SignalObjects)
@@ -327,13 +327,17 @@ namespace Orts.Viewer3D.WebServices
 
                 if (kind == "signal-stop")
                     selected.RequestHoldSignalDispatcher(true);
+                else if (kind == "signal-proceed")
+                    selected.RequestLeastRestrictiveAspect();
                 else
                     selected.ClearHoldSignalDispatcher();
 
                 result.Accepted = true;
                 result.Message = kind == "signal-stop"
                     ? "Sinal colocado sob comando de paragem (estado " + selected.holdState + ")."
-                    : "Sinal devolvido ao sistema de encravamento (estado " + selected.holdState + ").";
+                    : kind == "signal-proceed"
+                        ? "Sinal aberto manualmente (estado " + selected.holdState + ")."
+                        : "Sinal devolvido ao sistema de encravamento (estado " + selected.holdState + ").";
                 return Complete(result);
             }
 
@@ -365,11 +369,24 @@ namespace Orts.Viewer3D.WebServices
                     return Complete(result);
                 }
 
-                result.Accepted = signals.RequestSetSwitch(command.Reference);
+                if (circuit.OriginalIndex < 0 || circuit.OriginalIndex >= viewer.Simulator.TDB.TrackDB.TrackNodes.Length)
+                {
+                    result.Message = "Não foi possível localizar a agulha na via.";
+                    return Complete(result);
+                }
+
+                var switchNode = viewer.Simulator.TDB.TrackDB.TrackNodes[circuit.OriginalIndex];
+                if (switchNode == null || switchNode.TCCrossReference == null || switchNode.TCCrossReference.Length == 0)
+                {
+                    result.Message = "A agulha não possui referência de via válida.";
+                    return Complete(result);
+                }
+
+                result.Accepted = signals.RequestSetSwitch(switchNode, command.Position);
                 result.Position = circuit.JunctionLastRoute;
                 result.Message = result.Accepted
-                    ? "Agulha comandada."
-                    : "Comando recusado: agulha ocupada, reservada ou encravada.";
+                    ? "Agulha colocada na posição " + result.Position + "."
+                    : "Comando recusado: agulha ocupada ou reservada.";
                 return Complete(result);
             }
 

@@ -315,7 +315,7 @@ namespace Orts.Viewer3D.WebServices
         {
             var command = await HttpContext.GetRequestDataAsync<CPVirtualCommand>(
                 WebServer.DeserializationCallback<CPVirtualCommand>);
-            return CPVirtualDispatcherExport.Execute(Viewer, command);
+            return CPVirtualDispatcherExport.Queue(command);
         }
         #endregion
 

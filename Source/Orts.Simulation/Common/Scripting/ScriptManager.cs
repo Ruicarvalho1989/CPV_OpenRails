@@ -47,9 +47,31 @@ namespace Orts.Common.Scripting
                     typeof(ORTS.Common.ElapsedTime).Assembly.Location,
                     typeof(ORTS.Scripting.Api.Timer).Assembly.Location,
                 })
+                .Where(IsManagedAssembly)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToArray();
         static MetadataReference[] References = ReferenceAssemblies.Select(r => MetadataReference.CreateFromFile(r)).ToArray();
+
+        private static bool IsManagedAssembly(string path)
+        {
+            try
+            {
+                AssemblyName.GetAssemblyName(path);
+                return true;
+            }
+            catch (BadImageFormatException)
+            {
+                return false;
+            }
+            catch (FileLoadException)
+            {
+                return false;
+            }
+            catch (FileNotFoundException)
+            {
+                return false;
+            }
+        }
         static CSharpCompilationOptions CompilationOptions = new CSharpCompilationOptions(
             OutputKind.DynamicallyLinkedLibrary,
             optimizationLevel: Debugger.IsAttached ? OptimizationLevel.Debug : OptimizationLevel.Release);

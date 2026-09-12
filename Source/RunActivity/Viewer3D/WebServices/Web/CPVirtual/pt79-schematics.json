@@ -6,6 +6,7 @@
       "id": "ALFARELOS_COIMBRA_B",
       "title": "Alfarelos — Coimbra-B",
       "dispatcherPost": "RSC-CT-2",
+      "radio": { "network": "CP-N", "group": "GR", "channel": "62", "source": "CPV zone configuration" },
       "boundaries": { "west": "Alfarelos", "east": "Coimbra-B" },
       "stations": [
         { "name": "Alfarelos", "reference": 43 },

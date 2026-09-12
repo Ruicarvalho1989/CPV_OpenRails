@@ -117,6 +117,8 @@ namespace Orts.Viewer3D.WebServices
         public string FromName;
         public int TrainNumber;
         public string PostId;
+        public string Channel;
+        public string Group;
         public string Kind;
         public string Text;
     }
@@ -129,6 +131,8 @@ namespace Orts.Viewer3D.WebServices
         public string FromName;
         public int TrainNumber;
         public string PostId;
+        public string Channel;
+        public string Group;
         public string Kind;
         public string Text;
     }
@@ -191,6 +195,8 @@ namespace Orts.Viewer3D.WebServices
                 FromName = request.FromName.Trim(),
                 TrainNumber = request.TrainNumber,
                 PostId = request.PostId == null ? String.Empty : request.PostId.Trim(),
+                Channel = request.Channel == null ? String.Empty : request.Channel.Trim(),
+                Group = String.IsNullOrWhiteSpace(request.Group) ? "GR" : request.Group.Trim(),
                 Kind = String.IsNullOrWhiteSpace(request.Kind) ? "radio" : request.Kind.Trim(),
                 Text = request.Text.Trim()
             };

@@ -65,6 +65,7 @@ namespace Orts.Viewer3D.WebServices
         public List<CPVirtualCircuitState> Circuits = new List<CPVirtualCircuitState>();
         public List<CPVirtualSignalState> Signals = new List<CPVirtualSignalState>();
         public List<CPVirtualTrainState> Trains = new List<CPVirtualTrainState>();
+        public CPVirtualCommandResult LastCommand;
     }
 
     public sealed class CPVirtualCircuitState
@@ -88,6 +89,7 @@ namespace Orts.Viewer3D.WebServices
         public string ControlMode;
         public int FrontCircuit;
         public float FrontCircuitOffset;
+        public int FrontDirection;
         public double? Latitude;
         public double? Longitude;
         public int NextSignalReference;
@@ -128,6 +130,7 @@ namespace Orts.Viewer3D.WebServices
     /// </summary>
     public static class CPVirtualDispatcherExport
     {
+        private static CPVirtualCommandResult lastCommand;
         public static CPVirtualTopology Topology(Viewer viewer)
         {
             var simulator = viewer.Simulator;
@@ -207,7 +210,7 @@ namespace Orts.Viewer3D.WebServices
         public static CPVirtualState State(Viewer viewer)
         {
             var signals = viewer.Simulator.Signals;
-            var output = new CPVirtualState { CapturedAtUtc = DateTime.UtcNow };
+            var output = new CPVirtualState { CapturedAtUtc = DateTime.UtcNow, LastCommand = lastCommand };
             if (signals == null)
                 return output;
 
@@ -271,6 +274,7 @@ namespace Orts.Viewer3D.WebServices
                     ControlMode = train.ControlMode.ToString(),
                     FrontCircuit = train.PresentPosition[0].TCSectionIndex,
                     FrontCircuitOffset = train.PresentPosition[0].TCOffset,
+                    FrontDirection = train.PresentPosition[0].TCDirection,
                     Latitude = TrainLatitude(train),
                     Longitude = TrainLongitude(train),
                     NextSignalReference = train.NextSignalObject == null || train.NextSignalObject[0] == null ? -1 : train.NextSignalObject[0].thisRef,
@@ -292,12 +296,12 @@ namespace Orts.Viewer3D.WebServices
             };
 
             if (command == null || viewer == null || viewer.Simulator == null || viewer.Simulator.Signals == null)
-                return result;
+                return Complete(result);
 
             if (MPManager.IsClient())
             {
                 result.Message = "Este computador não é o servidor da sessão.";
-                return result;
+                return Complete(result);
             }
 
             var signals = viewer.Simulator.Signals;
@@ -318,7 +322,7 @@ namespace Orts.Viewer3D.WebServices
                 if (selected == null || selected.SignalNumNormalHeads <= 0)
                 {
                     result.Message = "Sinal principal não encontrado.";
-                    return result;
+                    return Complete(result);
                 }
 
                 if (kind == "signal-stop")
@@ -328,9 +332,9 @@ namespace Orts.Viewer3D.WebServices
 
                 result.Accepted = true;
                 result.Message = kind == "signal-stop"
-                    ? "Sinal colocado sob comando de paragem."
-                    : "Sinal devolvido ao sistema de encravamento.";
-                return result;
+                    ? "Sinal colocado sob comando de paragem (estado " + selected.holdState + ")."
+                    : "Sinal devolvido ao sistema de encravamento (estado " + selected.holdState + ").";
+                return Complete(result);
             }
 
             if (kind == "switch-set")
@@ -338,27 +342,27 @@ namespace Orts.Viewer3D.WebServices
                 if (command.Reference < 0 || command.Reference >= signals.TrackCircuitList.Count)
                 {
                     result.Message = "Agulha não encontrada.";
-                    return result;
+                    return Complete(result);
                 }
 
                 var circuit = signals.TrackCircuitList[command.Reference];
                 if (circuit == null || circuit.CircuitType != TrackCircuitSection.TrackCircuitType.Junction)
                 {
                     result.Message = "O circuito indicado não é uma agulha.";
-                    return result;
+                    return Complete(result);
                 }
 
                 if (command.Position != 0 && command.Position != 1)
                 {
                     result.Message = "Posição de agulha inválida.";
-                    return result;
+                    return Complete(result);
                 }
 
                 if (circuit.JunctionLastRoute == command.Position)
                 {
                     result.Accepted = true;
                     result.Message = "A agulha já se encontra nessa posição.";
-                    return result;
+                    return Complete(result);
                 }
 
                 result.Accepted = signals.RequestSetSwitch(command.Reference);
@@ -366,11 +370,11 @@ namespace Orts.Viewer3D.WebServices
                 result.Message = result.Accepted
                     ? "Agulha comandada."
                     : "Comando recusado: agulha ocupada, reservada ou encravada.";
-                return result;
+                return Complete(result);
             }
 
             result.Message = "Tipo de comando desconhecido.";
-            return result;
+            return Complete(result);
         }
 
         private static double? CircuitLatitude(Simulator simulator, TrackCircuitSection circuit)

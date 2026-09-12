@@ -376,7 +376,7 @@ namespace Orts.Viewer3D.WebServices
                 }
 
                 var switchNode = viewer.Simulator.TDB.TrackDB.TrackNodes[circuit.OriginalIndex];
-                if (switchNode == null || switchNode.TCCrossReference == null || switchNode.TCCrossReference.Length == 0)
+                if (switchNode == null || switchNode.TCCrossReference == null || switchNode.TCCrossReference.Count == 0)
                 {
                     result.Message = "A agulha não possui referência de via válida.";
                     return Complete(result);

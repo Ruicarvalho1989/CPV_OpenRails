@@ -38,40 +38,24 @@ namespace Orts.Common.Scripting
         static readonly string[] ReferenceAssemblies =
             ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))
                 .Split(Path.PathSeparator)
-                // In a framework-dependent build, application and Windows Desktop
-                // assemblies do not live beside System.Private.CoreLib. Keep the
-                // complete trusted assembly list so rolling-stock scripts can resolve
-                // dependencies such as System.IO.Ports and simulator assemblies.
+                .Where(path =>
+                    string.Equals(
+                        Path.GetDirectoryName(path),
+                        Path.GetDirectoryName(typeof(object).Assembly.Location),
+                        StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(
+                        Path.GetFileName(path),
+                        "System.IO.Ports.dll",
+                        StringComparison.OrdinalIgnoreCase))
                 .Concat(new[]
                 {
                     typeof(ORTS.Common.ElapsedTime).Assembly.Location,
                     typeof(ORTS.Scripting.Api.Timer).Assembly.Location,
+                    typeof(Simulator).Assembly.Location,
                 })
-                .Where(IsManagedAssembly)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToArray();
         static MetadataReference[] References = ReferenceAssemblies.Select(r => MetadataReference.CreateFromFile(r)).ToArray();
-
-        private static bool IsManagedAssembly(string path)
-        {
-            try
-            {
-                AssemblyName.GetAssemblyName(path);
-                return true;
-            }
-            catch (BadImageFormatException)
-            {
-                return false;
-            }
-            catch (FileLoadException)
-            {
-                return false;
-            }
-            catch (FileNotFoundException)
-            {
-                return false;
-            }
-        }
         static CSharpCompilationOptions CompilationOptions = new CSharpCompilationOptions(
             OutputKind.DynamicallyLinkedLibrary,
             optimizationLevel: Debugger.IsAttached ? OptimizationLevel.Debug : OptimizationLevel.Release);

@@ -1,0 +1,25 @@
+{
+  "routeId": "CPV_PT79",
+  "routeName": "Portugal79",
+  "posts": [
+    {
+      "id": "ALFARELOS_COIMBRA_B",
+      "title": "Alfarelos — Coimbra-B",
+      "dispatcherPost": "RSC-CT-2",
+      "boundaries": { "west": "Alfarelos", "east": "Coimbra-B" },
+      "stations": [
+        { "name": "Alfarelos", "reference": 43 },
+        { "name": "Formoselha", "reference": 44 },
+        { "name": "Pereira do Campo", "reference": 45 },
+        { "name": "Amial", "reference": 46 },
+        { "name": "Vila Pouca do Campo", "reference": 47 },
+        { "name": "Taveiro", "reference": 48 },
+        { "name": "Casais", "reference": 49 },
+        { "name": "Espadaneira", "reference": 50 },
+        { "name": "Bencanta", "reference": 51 },
+        { "name": "Coimbra-B", "reference": 52 }
+      ],
+      "deviceMapping": "pending-runtime-export"
+    }
+  ]
+}

@@ -809,6 +809,7 @@ namespace Orts.Viewer3D
                 Camera.AttachedCar.Train.FormationReversed = false;
                 (Camera as TrackingCamera).SwapCameras();
             }
+            CPVirtualDispatcherExport.ProcessPending(this);
             Simulator.Update(elapsedTime.ClockSeconds);
             if (PlayerLocomotive.Train.BrakingTime == -2) // We just had a wagon with stuck brakes
             {

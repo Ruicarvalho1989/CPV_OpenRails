@@ -58,6 +58,7 @@ namespace Orts.Viewer3D.WebServices
         public DateTime CapturedAtUtc;
         public List<CPVirtualCircuitState> Circuits = new List<CPVirtualCircuitState>();
         public List<CPVirtualSignalState> Signals = new List<CPVirtualSignalState>();
+        public List<CPVirtualTrainState> Trains = new List<CPVirtualTrainState>();
     }
 
     public sealed class CPVirtualCircuitState
@@ -70,6 +71,16 @@ namespace Orts.Viewer3D.WebServices
         public bool RemoteOccupied;
         public int JunctionRoute;
         public int JunctionManualRoute;
+    }
+
+    public sealed class CPVirtualTrainState
+    {
+        public int Number;
+        public string Name;
+        public float SpeedKmh;
+        public string ControlMode;
+        public int FrontCircuit;
+        public float FrontCircuitOffset;
     }
 
     public sealed class CPVirtualSignalState
@@ -207,6 +218,24 @@ namespace Orts.Viewer3D.WebServices
                         CallOnEnabled = signal.CallOnEnabled
                     });
                 }
+            }
+
+            // TrainDictionary is maintained by ORTS for the active simulation,
+            // including timetable services which have already been created.
+            foreach (var train in viewer.Simulator.TrainDictionary.Values)
+            {
+                if (train == null)
+                    continue;
+
+                output.Trains.Add(new CPVirtualTrainState
+                {
+                    Number = train.Number,
+                    Name = train.Name,
+                    SpeedKmh = train.SpeedMpS * 3.6f,
+                    ControlMode = train.ControlMode.ToString(),
+                    FrontCircuit = train.PresentPosition[0].TCSectionIndex,
+                    FrontCircuitOffset = train.PresentPosition[0].TCOffset
+                });
             }
 
             return output;

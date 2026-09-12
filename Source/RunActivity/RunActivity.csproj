@@ -672,6 +672,11 @@
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
   </ItemGroup>
+  <Target Name="CopyRuntimeConfigurationToProgram" AfterTargets="PostBuild">
+    <Copy SourceFiles="$(TargetDir)$(AssemblyName).runtimeconfig.json"
+          DestinationFolder="$(MSBuildProjectDirectory)\..\..\Program"
+          SkipUnchangedFiles="true" />
+  </Target>
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
     <Exec Command="PostBuildActions.bat" />
   </Target>

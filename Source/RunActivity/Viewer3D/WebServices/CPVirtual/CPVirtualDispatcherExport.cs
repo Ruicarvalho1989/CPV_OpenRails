@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using Orts.Common;
 using Orts.Formats.Msts;
+using Orts.Simulation;
 using Orts.Simulation.Signalling;
 
 namespace Orts.Viewer3D.WebServices
@@ -264,19 +265,19 @@ namespace Orts.Viewer3D.WebServices
             return output;
         }
 
-        private static double? CircuitLatitude(dynamic simulator, TrackCircuitSection circuit)
+        private static double? CircuitLatitude(Simulator simulator, TrackCircuitSection circuit)
         {
             var point = CircuitLocation(simulator, circuit);
             return point == null ? (double?)null : point.Lat;
         }
 
-        private static double? CircuitLongitude(dynamic simulator, TrackCircuitSection circuit)
+        private static double? CircuitLongitude(Simulator simulator, TrackCircuitSection circuit)
         {
             var point = CircuitLocation(simulator, circuit);
             return point == null ? (double?)null : point.Lon;
         }
 
-        private static LatLon CircuitLocation(dynamic simulator, TrackCircuitSection circuit)
+        private static LatLon CircuitLocation(Simulator simulator, TrackCircuitSection circuit)
         {
             if (circuit.CircuitType != TrackCircuitSection.TrackCircuitType.Junction ||
                 circuit.OriginalIndex < 0 || circuit.OriginalIndex >= simulator.TDB.TrackDB.TrackNodes.Length)

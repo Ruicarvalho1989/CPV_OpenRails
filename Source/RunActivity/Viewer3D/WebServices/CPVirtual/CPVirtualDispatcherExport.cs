@@ -116,6 +116,7 @@ namespace Orts.Viewer3D.WebServices
         public string FromRole;
         public string FromName;
         public int TrainNumber;
+        public int ServiceNumber;
         public string PostId;
         public string Channel;
         public string Group;
@@ -132,6 +133,7 @@ namespace Orts.Viewer3D.WebServices
         public string FromRole;
         public string FromName;
         public int TrainNumber;
+        public int ServiceNumber;
         public string PostId;
         public string Channel;
         public string Group;
@@ -226,6 +228,7 @@ namespace Orts.Viewer3D.WebServices
                 FromRole = request.FromRole.Trim(),
                 FromName = request.FromName.Trim(),
                 TrainNumber = request.TrainNumber,
+                ServiceNumber = request.ServiceNumber,
                 PostId = request.PostId == null ? String.Empty : request.PostId.Trim(),
                 Channel = request.Channel == null ? String.Empty : request.Channel.Trim(),
                 Group = String.IsNullOrWhiteSpace(request.Group) ? "GR" : request.Group.Trim(),

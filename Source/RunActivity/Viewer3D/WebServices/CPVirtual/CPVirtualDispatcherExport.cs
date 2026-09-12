@@ -7,7 +7,6 @@
 
 using System;
 using System.Collections.Generic;
-using Orts.Common;
 using Orts.Simulation.Signalling;
 
 namespace Orts.Viewer3D.WebServices
@@ -23,7 +22,6 @@ namespace Orts.Viewer3D.WebServices
         public string RoutePathName;
         public bool TimetableMode;
         public string TimetableFileName;
-        public InfoApiMap Map;
         public List<CPVirtualCircuitTopology> Circuits = new List<CPVirtualCircuitTopology>();
         public List<CPVirtualSignalTopology> Signals = new List<CPVirtualSignalTopology>();
     }
@@ -108,8 +106,7 @@ namespace Orts.Viewer3D.WebServices
                 RouteName = simulator.RouteName,
                 RoutePathName = simulator.RoutePathName,
                 TimetableMode = simulator.TimetableMode,
-                TimetableFileName = simulator.TimetableFileName,
-                Map = WebServer.GetApiMapInfo(viewer)
+                TimetableFileName = simulator.TimetableFileName
             };
 
             if (signals == null)

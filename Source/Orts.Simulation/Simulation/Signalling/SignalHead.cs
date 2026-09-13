@@ -70,6 +70,12 @@ namespace Orts.Simulation.Signalling
             trItemIndex = trItem;
             TDBIndex = TDBRef;
 
+            // Keep an incomplete/custom route signal head in a safe UNKNOWN
+            // state until SetSignalType resolves its configured type. Some
+            // routes reference signal types which are missing from sigcfg.dat;
+            // leaving signalType null later crashes the TCS/track monitor.
+            signalType = new SignalType(SignalFunction.UNKNOWN, MstsSignalAspect.STOP);
+
             if (sigItem.NoSigDirs > 0)
             {
                 TrackJunctionNode = sigItem.TrSignalDirs[0].TrackNode;

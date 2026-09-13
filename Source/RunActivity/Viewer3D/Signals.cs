@@ -212,7 +212,9 @@ namespace Orts.Viewer3D
 
 
                 if (!viewer.SIGCFG.SignalTypes.ContainsKey(mstsSignalSubObj.SignalSubSignalType))
-                    return;
+                    throw new InvalidDataException(String.Format(
+                        "Skipped signal {0} unit {1}: unknown signal type '{2}'",
+                        signalShape.UID, index, mstsSignalSubObj.SignalSubSignalType));
 
                 var mstsSignalType = viewer.SIGCFG.SignalTypes[mstsSignalSubObj.SignalSubSignalType];
 
@@ -308,6 +310,9 @@ namespace Orts.Viewer3D
 
             public void PrepareFrame(RenderFrame frame, ElapsedTime elapsedTime, Matrix xnaTileTranslation)
             {
+                if (SignalTypeData == null)
+                    return;
+
                 var initialise = DisplayState == -1;
                 if (DisplayState != SignalHead.draw_state)
                 {
@@ -408,7 +413,8 @@ namespace Orts.Viewer3D
             [CallOnThread("Loader")]
             internal void Mark()
             {
-                SignalTypeData.Mark();
+                if (SignalTypeData != null)
+                    SignalTypeData.Mark();
             }
         }
     }

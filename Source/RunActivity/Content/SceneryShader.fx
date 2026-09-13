@@ -462,7 +462,7 @@ float3 _PSGetOvercastColor(in float4 Color, in VERTEX_OUTPUT In)
 
 // Applies the lighting effect of the train's headlights, including
 // fade-in/fade-out animations.
-void _PSApplyHeadlights(inout float3 Color, in float3 OriginalColor, in VERTEX_OUTPUT In)
+void _PSApplyHeadlights(uniform bool HeadlightShadows, inout float3 Color, in float3 OriginalColor, in VERTEX_OUTPUT In)
 {
 	float3 headlightToSurface = normalize(In.LightDir_Fog.xyz);
 	float coneDot = dot(headlightToSurface, HeadlightDirection.xyz);
@@ -472,7 +472,8 @@ void _PSApplyHeadlights(inout float3 Color, in float3 OriginalColor, in VERTEX_O
 	shading *= saturate(HeadlightDirection.w / (1 - coneDot));
 	shading *= saturate(1 - length(In.LightDir_Fog.xyz) * HeadlightRcpDistance);
 	shading *= HeadlightPosition.w;
-	shading *= _PSGetHeadlightShadowEffect(In);
+	if (HeadlightShadows)
+		shading *= _PSGetHeadlightShadowEffect(In);
 	Color += OriginalColor * HeadlightColor.rgb * HeadlightColor.a * shading;
 }
 
@@ -512,7 +513,7 @@ float4 PSImage(uniform bool ShaderModel3, uniform bool ClampTexCoords, in VERTEX
 	// Night-time darkens everything, except night-time textures.
 	litColor *= NightColorModifier;
 	// Headlights effect use original Color.
-	_PSApplyHeadlights(litColor, Color.rgb, In);
+	_PSApplyHeadlights(ShaderModel3, litColor, Color.rgb, In);
 	// And fogging is last.
 	_PSApplyFog(litColor, In);
 	if (ShaderModel3) _PSSceneryFade(Color, In);
@@ -548,7 +549,7 @@ float4 PSVegetation(in VERTEX_OUTPUT In) : COLOR0
 	// Night-time darkens everything, except night-time textures.
 	litColor *= NightColorModifier;
 	// Headlights effect use original Color.
-	_PSApplyHeadlights(litColor, Color.rgb, In);
+	_PSApplyHeadlights(false, litColor, Color.rgb, In);
 	// And fogging is last.
 	_PSApplyFog(litColor, In);
 	_PSSceneryFade(Color, In);
@@ -571,7 +572,7 @@ float4 PSTerrain(uniform bool ShaderModel3, in VERTEX_OUTPUT In) : COLOR0
 	// Overlay image for terrain.
 	litColor.rgb *= tex2D(Overlay, In.TexCoords.xy * OverlayScale).rgb * 2;
 	// Headlights effect use original Color.
-	_PSApplyHeadlights(litColor, Color.rgb, In);
+	_PSApplyHeadlights(ShaderModel3, litColor, Color.rgb, In);
 	// And fogging is last.
 	_PSApplyFog(litColor, In);
 	_PSSceneryFade(Color, In);
@@ -604,7 +605,7 @@ float4 PSDarkShade(in VERTEX_OUTPUT In) : COLOR0
 	// Night-time darkens everything, except night-time textures.
 	litColor *= NightColorModifier;
 	// Headlights effect use original Color.
-	_PSApplyHeadlights(litColor, Color.rgb, In);
+	_PSApplyHeadlights(false, litColor, Color.rgb, In);
 	// And fogging is last.
 	_PSApplyFog(litColor, In);
 	_PSSceneryFade(Color, In);
@@ -626,7 +627,7 @@ float4 PSHalfBright(in VERTEX_OUTPUT In) : COLOR0
 	// Night-time darkens everything, except night-time textures.
 	litColor *= HalfNightColorModifier;
 	// Headlights effect use original Color.
-	_PSApplyHeadlights(litColor, Color.rgb, In);
+	_PSApplyHeadlights(false, litColor, Color.rgb, In);
 	// And fogging is last.
 	_PSApplyFog(litColor, In);
 	_PSSceneryFade(Color, In);
@@ -644,7 +645,7 @@ float4 PSFullBright(in VERTEX_OUTPUT In) : COLOR0
 	// No overcast effect for full-bright.
 	// No night-time effect for full-bright.
 	// Headlights effect use original Color.
-	_PSApplyHeadlights(litColor, Color.rgb, In);
+	_PSApplyHeadlights(false, litColor, Color.rgb, In);
 	// And fogging is last.
 	_PSApplyFog(litColor, In);
 	_PSSceneryFade(Color, In);

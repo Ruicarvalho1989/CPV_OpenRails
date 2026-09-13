@@ -213,8 +213,8 @@ namespace Orts.Viewer3D
 
                 if (!viewer.SIGCFG.SignalTypes.ContainsKey(mstsSignalSubObj.SignalSubSignalType))
                     throw new InvalidDataException(String.Format(
-                        "Skipped signal {0} unit {1}: unknown signal type '{2}'",
-                        signalShape.UID, index, mstsSignalSubObj.SignalSubSignalType));
+                        "Skipped signal at {0} unit {1}: unknown signal type '{2}'",
+                        signalShape.Location, index, mstsSignalSubObj.SignalSubSignalType));
 
                 var mstsSignalType = viewer.SIGCFG.SignalTypes[mstsSignalSubObj.SignalSubSignalType];
 

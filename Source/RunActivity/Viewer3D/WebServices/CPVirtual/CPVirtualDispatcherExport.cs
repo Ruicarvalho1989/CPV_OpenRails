@@ -521,6 +521,7 @@ namespace Orts.Viewer3D.WebServices
                 }
 
                 state.Order = order.MessageIdentifier;
+                var executed = true;
                 switch (order.MessageIdentifier)
                 {
                     case 1:
@@ -546,9 +547,34 @@ namespace Orts.Viewer3D.WebServices
                         aiOrders.TryRemove(train.Number, out removed);
                         aiTrain.RecalculateAllowedMaxSpeed();
                         break;
+                    default:
+                        executed = false;
+                        break;
                 }
+                if (executed)
+                    AcknowledgeAIOrder(train, order);
                 return;
             }
+        }
+
+        private static void AcknowledgeAIOrder(Orts.Simulation.Physics.Train train, CPVirtualRadioMessage order)
+        {
+            var acknowledgement = CreateRadioMessage(new CPVirtualRadioRequest
+            {
+                FromRole = "driver-ai",
+                FromName = String.IsNullOrWhiteSpace(train.Name) ? "IA " + train.Number : train.Name,
+                TrainNumber = train.Number,
+                ServiceNumber = order.ServiceNumber,
+                PostId = order.PostId,
+                Channel = order.Channel,
+                Group = order.Group,
+                SourceDestinationIdentifier = 1,
+                MessageIdentifier = 7,
+                Kind = "acknowledgement",
+                Text = "CONFIRMADO — " + order.Text
+            });
+            AddRadioMessage(acknowledgement);
+            BroadcastRadio(acknowledgement);
         }
 
         private static void ApplyAIOrders(Viewer viewer)

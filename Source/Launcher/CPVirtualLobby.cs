@@ -115,7 +115,7 @@ namespace Launcher
 
         private string LoadLobbyPage()
         {
-            var file = Path.Combine(programPath, "Content", "Web", "CPVirtual", "lobby.html");
+            var file = System.IO.Path.Combine(programPath, "Content", "Web", "CPVirtual", "lobby.html");
             if (File.Exists(file))
                 return File.ReadAllText(file, Encoding.UTF8).Replace("{{CPV_HOST_PROFILES}}", BuildHostProfiles());
             return "<html><body><h1>CP Virtual</h1><p>Falta Content/Web/CPVirtual/lobby.html.</p>" +
@@ -236,9 +236,9 @@ namespace Launcher
         {
             if (selection == null)
                 return;
-            var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Open Rails");
+            var directory = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Open Rails");
             Directory.CreateDirectory(directory);
-            File.WriteAllLines(Path.Combine(directory, "CPVirtual.launch"), new[]
+            File.WriteAllLines(System.IO.Path.Combine(directory, "CPVirtual.launch"), new[]
             {
                 "role=" + selection.Role.ToString().ToLowerInvariant(),
                 "host=" + (selection.Host ?? String.Empty),

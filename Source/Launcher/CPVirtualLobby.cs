@@ -30,6 +30,7 @@ namespace Launcher
         public string TimetableFile;
         public string Timetable;
         public string SeedTrain;
+        public bool RealisticVisuals;
     }
 
     /// <summary>
@@ -133,12 +134,16 @@ namespace Launcher
             if (!Enum.TryParse(roleValue, true, out role))
                 return null;
 
+            string visual;
+            values.TryGetValue("visual", out visual);
+
             if (role == CPVirtualRole.Server)
             {
                 string profileKey;
                 CPVirtualLaunchSelection profile;
                 if (!values.TryGetValue("profile", out profileKey) || !hostProfiles.TryGetValue(profileKey, out profile))
                     return null;
+                profile.RealisticVisuals = String.Equals(visual, "realistic", StringComparison.OrdinalIgnoreCase);
                 return profile;
             }
 
@@ -148,13 +153,43 @@ namespace Launcher
             values.TryGetValue("host", out host);
             values.TryGetValue("service", out service);
             values.TryGetValue("post", out post);
+            values.TryGetValue("visual", out visual);
             return new CPVirtualLaunchSelection
             {
                 Role = role,
                 Host = CleanHost(host),
                 Service = (service ?? String.Empty).Trim(),
-                Post = (post ?? String.Empty).Trim()
+                Post = (post ?? String.Empty).Trim(),
+                RealisticVisuals = String.Equals(visual, "realistic", StringComparison.OrdinalIgnoreCase)
             };
+        }
+
+        /// <summary>
+        /// High-quality visual profile intended for modern GPUs. It changes
+        /// only local graphics settings; route weather remains authoritative.
+        /// It is deliberately opt-in from the CP Virtual lobby.
+        /// </summary>
+        public static void ApplyRealisticVisualProfile(CPVirtualLaunchSelection selection)
+        {
+            if (selection == null || !selection.RealisticVisuals)
+                return;
+
+            var settings = new UserSettings(new string[0]);
+            settings.DynamicShadows = true;
+            settings.ShadowAllShapes = true;
+            settings.ShadowMapBlur = true;
+            settings.ShadowMapCount = 4;
+            settings.ShadowMapResolution = 2048;
+            settings.ShadowMapDistance = 5000;
+            settings.ViewingDistance = Math.Max(settings.ViewingDistance, 8000);
+            settings.DistantMountains = true;
+            settings.DistantMountainsViewingDistance = Math.Max(settings.DistantMountainsViewingDistance, 40000);
+            settings.LODViewingExtension = true;
+            settings.WorldObjectDensity = 99;
+            settings.DayAmbientLight = 20;
+            settings.AntiAliasing = (int)UserSettings.AntiAliasingMethod.MSAA8x;
+            settings.SignalLightGlow = true;
+            settings.Save();
         }
 
         private string BuildHostProfiles()
@@ -243,7 +278,8 @@ namespace Launcher
                 "role=" + selection.Role.ToString().ToLowerInvariant(),
                 "host=" + (selection.Host ?? String.Empty),
                 "service=" + (selection.Service ?? String.Empty),
-                "post=" + (selection.Post ?? String.Empty)
+                "post=" + (selection.Post ?? String.Empty),
+                "visual=" + (selection.RealisticVisuals ? "realistic" : String.Empty)
             });
         }
 

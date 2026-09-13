@@ -12,7 +12,7 @@
     .roles{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:30px}.role{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:22px;cursor:pointer;text-align:left;color:inherit}
     .role:hover,.role.active{border-color:var(--green);transform:translateY(-1px)}.role h2{margin:0 0 8px}.role p{color:var(--muted);min-height:54px}
     form{display:none;margin-top:18px;padding:22px;background:var(--panel);border:1px solid var(--line);border-radius:10px}form.active{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-    label{color:var(--muted)}input,select{display:block;width:100%;margin-top:6px;padding:12px;background:#0c171d;color:var(--text);border:1px solid var(--line);border-radius:6px}
+    label{color:var(--muted)}input,select{display:block;width:100%;margin-top:6px;padding:12px;background:#0c171d;color:var(--text);border:1px solid var(--line);border-radius:6px}.visual{grid-column:1/-1;display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:6px;background:#101c22}.visual input{width:auto;margin:0}.visual b{color:var(--green)}
     .actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:10px}button,.classic{padding:12px 20px;border-radius:6px;border:1px solid var(--line);background:#27363e;color:var(--text);font-weight:700;text-decoration:none}.primary{background:#28754d;border-color:#54b982}
     .note{margin-top:28px;color:var(--muted)}@media(max-width:760px){.roles{grid-template-columns:1fr}form.active{grid-template-columns:1fr}.role p{min-height:0}}
   </style>
@@ -33,6 +33,7 @@
       <label id="hostLabel">Servidor/IP<input id="host" name="host" placeholder="127.0.0.1"></label>
       <label id="serviceLabel">Número de serviço<input name="service" placeholder="Ex.: 514"></label>
       <label id="postLabel">Posto de controlo<select name="post"><option value="">Escolher no posto</option><option>Coimbra</option><option>Alfarelos</option></select></label>
+      <label class="visual"><input name="visual" value="realistic" type="checkbox"><span><b>Visual realista (teste)</b><br>Sombras 2K, maior distância de visão, 8x MSAA e brilho de sinais. Recomendado para RTX 3090; pode reduzir FPS.</span></label>
       <div class="actions"><a class="classic" href="/select?role=classic">Menu Open Rails</a><button class="primary" type="submit">Continuar</button></div>
     </form>
     <p class="note">O anfitrião continuará a executar o motor de simulação. O controlador utiliza apenas esta interface web.</p>

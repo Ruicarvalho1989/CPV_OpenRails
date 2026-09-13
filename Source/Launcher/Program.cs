@@ -61,6 +61,8 @@ namespace Launcher
             if (selection == null || selection.Role == CPVirtualRole.Dispatcher)
                 return;
 
+            CPVirtualLobby.ApplyRealisticVisualProfile(selection);
+
             if (selection.Role == CPVirtualRole.Server)
             {
                 CPVirtualLobby.SaveSelection(selection);

@@ -25,6 +25,12 @@
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="..\RunActivity\Viewer3D\WebServices\Web\CPVirtual\lobby.html">
+      <Link>Content\Web\CPVirtual\lobby.html</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\Orts.Menu\Orts.Menu.csproj" />
     <ProjectReference Include="..\Orts.Settings\Orts.Settings.csproj" />
   </ItemGroup>

@@ -15,6 +15,7 @@ using Orts.Common;
 using Orts.Formats.Msts;
 using Orts.MultiPlayer;
 using Orts.Simulation;
+using Orts.Simulation.AIs;
 using Orts.Simulation.Signalling;
 
 namespace Orts.Viewer3D.WebServices
@@ -98,6 +99,10 @@ namespace Orts.Viewer3D.WebServices
         public double? Longitude;
         public int NextSignalReference;
         public int[] RouteCircuits = new int[0];
+        public int DispatcherOrder;
+        public bool DispatcherHold;
+        public bool DispatcherStopAtNextStation;
+        public float DispatcherSpeedLimitKmh;
     }
 
     public sealed class CPVirtualSignalState
@@ -177,10 +182,20 @@ namespace Orts.Viewer3D.WebServices
     /// </summary>
     public static class CPVirtualDispatcherExport
     {
+        private sealed class CPVirtualAIOrderState
+        {
+            public int Order;
+            public bool Hold;
+            public bool StopAtNextStation;
+            public float SpeedLimitMpS;
+        }
+
         private static readonly object radioLock = new object();
         private static readonly List<CPVirtualRadioMessage> radioMessages = new List<CPVirtualRadioMessage>();
         private static long nextRadioMessageId;
         private static readonly ConcurrentQueue<CPVirtualCommand> pendingCommands = new ConcurrentQueue<CPVirtualCommand>();
+        private static readonly ConcurrentQueue<CPVirtualRadioMessage> pendingAIOrders = new ConcurrentQueue<CPVirtualRadioMessage>();
+        private static readonly ConcurrentDictionary<int, CPVirtualAIOrderState> aiOrders = new ConcurrentDictionary<int, CPVirtualAIOrderState>();
         private static long nextCommandId;
         private static volatile CPVirtualCommandResult lastCommand;
         private static bool multiplayerListenerAttached;
@@ -257,6 +272,7 @@ namespace Orts.Viewer3D.WebServices
 
             var message = CreateRadioMessage(request);
             AddRadioMessage(message);
+            QueueAIOrder(message);
             BroadcastRadio(message);
 
             result.Accepted = true;
@@ -401,6 +417,8 @@ namespace Orts.Viewer3D.WebServices
                 if (train == null)
                     continue;
 
+                CPVirtualAIOrderState aiOrder;
+                aiOrders.TryGetValue(train.Number, out aiOrder);
                 output.Trains.Add(new CPVirtualTrainState
                 {
                     Number = train.Number,
@@ -413,7 +431,11 @@ namespace Orts.Viewer3D.WebServices
                     Latitude = TrainLatitude(train),
                     Longitude = TrainLongitude(train),
                     NextSignalReference = train.NextSignalObject == null || train.NextSignalObject[0] == null ? -1 : train.NextSignalObject[0].thisRef,
-                    RouteCircuits = TrainRouteCircuits(train)
+                    RouteCircuits = TrainRouteCircuits(train),
+                    DispatcherOrder = aiOrder == null ? 0 : aiOrder.Order,
+                    DispatcherHold = aiOrder != null && aiOrder.Hold,
+                    DispatcherStopAtNextStation = aiOrder != null && aiOrder.StopAtNextStation,
+                    DispatcherSpeedLimitKmh = aiOrder == null ? 0 : aiOrder.SpeedLimitMpS * 3.6f
                 });
             }
 
@@ -465,6 +487,90 @@ namespace Orts.Viewer3D.WebServices
             CPVirtualCommand command;
             while (pendingCommands.TryDequeue(out command))
                 Execute(viewer, command);
+
+            CPVirtualRadioMessage order;
+            while (pendingAIOrders.TryDequeue(out order))
+                ExecuteAIOrder(viewer, order);
+
+            ApplyAIOrders(viewer);
+        }
+
+        private static void QueueAIOrder(CPVirtualRadioMessage message)
+        {
+            if (message != null && message.SourceDestinationIdentifier == 3 &&
+                message.MessageIdentifier >= 1 && message.MessageIdentifier <= 10)
+                pendingAIOrders.Enqueue(message);
+        }
+
+        private static void ExecuteAIOrder(Viewer viewer, CPVirtualRadioMessage order)
+        {
+            if (viewer == null || viewer.Simulator == null || order == null || MPManager.IsClient())
+                return;
+
+            foreach (var train in viewer.Simulator.TrainDictionary.Values)
+            {
+                var aiTrain = train as AITrain;
+                if (aiTrain == null || train.IsActualPlayerTrain || train.Number != order.TrainNumber)
+                    continue;
+
+                CPVirtualAIOrderState state;
+                if (!aiOrders.TryGetValue(train.Number, out state))
+                {
+                    state = new CPVirtualAIOrderState();
+                    aiOrders[train.Number] = state;
+                }
+
+                state.Order = order.MessageIdentifier;
+                switch (order.MessageIdentifier)
+                {
+                    case 1:
+                        state.Hold = true;
+                        state.StopAtNextStation = false;
+                        state.SpeedLimitMpS = 0;
+                        break;
+                    case 2:
+                        state.Hold = false;
+                        state.StopAtNextStation = false;
+                        state.SpeedLimitMpS = 30f / 3.6f;
+                        break;
+                    case 3:
+                        state.StopAtNextStation = true;
+                        break;
+                    case 4:
+                        state.Hold = false;
+                        state.StopAtNextStation = false;
+                        state.SpeedLimitMpS = 60f / 3.6f;
+                        break;
+                    case 6:
+                        CPVirtualAIOrderState removed;
+                        aiOrders.TryRemove(train.Number, out removed);
+                        aiTrain.RecalculateAllowedMaxSpeed();
+                        break;
+                }
+                return;
+            }
+        }
+
+        private static void ApplyAIOrders(Viewer viewer)
+        {
+            foreach (var train in viewer.Simulator.TrainDictionary.Values)
+            {
+                var aiTrain = train as AITrain;
+                CPVirtualAIOrderState state;
+                if (aiTrain == null || train.IsActualPlayerTrain || !aiOrders.TryGetValue(train.Number, out state))
+                    continue;
+
+                if (state.StopAtNextStation && aiTrain.MovementState == AITrain.AI_MOVEMENT_STATE.STATION_STOP)
+                {
+                    state.StopAtNextStation = false;
+                    state.Hold = true;
+                }
+
+                if (state.SpeedLimitMpS > 0)
+                    aiTrain.AllowedMaxSpeedMpS = Math.Min(aiTrain.AllowedMaxSpeedMpS, state.SpeedLimitMpS);
+                if (state.Hold)
+                    aiTrain.AdjustControlsBrakeFull();
+            }
         }
 
         public static CPVirtualCommandResult Execute(Viewer viewer, CPVirtualCommand command)
@@ -666,6 +772,7 @@ namespace Orts.Viewer3D.WebServices
                         return;
                     var message = CreateRadioMessage(request);
                     AddRadioMessage(message);
+                    QueueAIOrder(message);
                     BroadcastRadio(message);
                 }
                 else if (kind == "radio-broadcast")

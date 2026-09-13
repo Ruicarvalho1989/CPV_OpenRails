@@ -377,12 +377,17 @@ namespace Orts.Viewer3D
         // Shared shadow map data.
         static RenderTarget2D[] ShadowMap;
         static RenderTarget2D[] ShadowMapRenderTarget;
+        static RenderTarget2D HeadlightShadowMap;
         static Vector3 SteppedSolarDirection = Vector3.UnitX;
 
         // Local shadow map data.
         Matrix[] ShadowMapLightView;
         Matrix[] ShadowMapLightProj;
         Matrix[] ShadowMapLightViewProjShadowProj;
+        Matrix HeadlightShadowLightView;
+        Matrix HeadlightShadowLightProj;
+        Matrix HeadlightShadowProjection;
+        bool HeadlightShadowActive;
         Vector3 ShadowMapX;
         Vector3 ShadowMapY;
         Vector3[] ShadowMapCenter;
@@ -395,6 +400,9 @@ namespace Orts.Viewer3D
         readonly RenderItemCollection[] RenderShadowSceneryItems;
         readonly RenderItemCollection[] RenderShadowForestItems;
         readonly RenderItemCollection[] RenderShadowTerrainItems;
+        readonly RenderItemCollection RenderHeadlightShadowSceneryItems = new RenderItemCollection();
+        readonly RenderItemCollection RenderHeadlightShadowForestItems = new RenderItemCollection();
+        readonly RenderItemCollection RenderHeadlightShadowTerrainItems = new RenderItemCollection();
         readonly RenderItemCollection RenderItemsSequence = new RenderItemCollection();
 
         public bool IsScreenChanged { get; internal set; }
@@ -428,6 +436,9 @@ namespace Orts.Viewer3D
                         ShadowMap[shadowMapIndex] = new RenderTarget2D(Game.RenderProcess.GraphicsDevice, shadowMapSize, shadowMapSize, false, SurfaceFormat.Rg32, DepthFormat.Depth16, 0, RenderTargetUsage.PreserveContents);
                     }
                 }
+
+                if (HeadlightShadowMap == null)
+                    HeadlightShadowMap = new RenderTarget2D(Game.RenderProcess.GraphicsDevice, 1024, 1024, false, SurfaceFormat.Rg32, DepthFormat.Depth16, 0, RenderTargetUsage.PreserveContents);
 
                 ShadowMapLightView = new Matrix[RenderProcess.ShadowMapCount];
                 ShadowMapLightProj = new Matrix[RenderProcess.ShadowMapCount];
@@ -494,6 +505,9 @@ namespace Orts.Viewer3D
                     RenderShadowForestItems[shadowMapIndex].Clear();
                     RenderShadowTerrainItems[shadowMapIndex].Clear();
                 }
+                RenderHeadlightShadowSceneryItems.Clear();
+                RenderHeadlightShadowForestItems.Clear();
+                RenderHeadlightShadowTerrainItems.Clear();
             }
         }
 
@@ -571,7 +585,30 @@ namespace Orts.Viewer3D
                     ShadowMapLightViewProjShadowProj[shadowMapIndex] = ShadowMapLightView[shadowMapIndex] * ShadowMapLightProj[shadowMapIndex] * new Matrix(0.5f, 0, 0, 0, 0, -0.5f, 0, 0, 0, 0, 1, 0, 0.5f + 0.5f / shadowMapSize, 0.5f + 0.5f / shadowMapSize, 0, 1);
                     ShadowMapCenter[shadowMapIndex] = shadowMapLocation;
                 }
+
+
+                HeadlightShadowActive = false;
+                var lightDrawer = Game.RenderProcess.Viewer?.PlayerLocomotiveViewer?.lightDrawer;
+                if (Game.Settings.ShadowAllShapes && lightDrawer != null && lightDrawer.IsLightConeActive && lightDrawer.LightConeDistance > 1)
+                {
+                    var lightPosition = lightDrawer.LightConePosition;
+                    var lightDirection = lightDrawer.LightConeDirection;
+                    if (lightDirection.LengthSquared() > 0.001f)
+                    {
+                        lightDirection.Normalize();
+                        var up = Math.Abs(Vector3.Dot(lightDirection, Vector3.Up)) > 0.98f ? Vector3.Forward : Vector3.Up;
+                        var distance = Math.Max(10f, lightDrawer.LightConeDistance);
+                        var halfWidth = Math.Max(5f, distance * (float)Math.Sqrt(Math.Max(0.001f, 1f - lightDrawer.LightConeMinDotProduct * lightDrawer.LightConeMinDotProduct)));
+                        HeadlightShadowLightView = Matrix.CreateLookAt(lightPosition, lightPosition + lightDirection, up);
+                        HeadlightShadowLightProj = Matrix.CreateOrthographic(halfWidth * 2, halfWidth * 2, 0.5f, distance);
+                        const float texelOffset = 0.5f / 1024f;
+                        HeadlightShadowProjection = HeadlightShadowLightView * HeadlightShadowLightProj * new Matrix(0.5f, 0, 0, 0, 0, -0.5f, 0, 0, 0, 0, 1, 0, 0.5f + texelOffset, 0.5f + texelOffset, 0, 1);
+                        HeadlightShadowActive = true;
+                    }
+                }
             }
+            else
+                HeadlightShadowActive = false;
         }
 
         /// <summary>
@@ -595,9 +632,13 @@ namespace Orts.Viewer3D
             }
 
             if (Game.Settings.DynamicShadows && (RenderProcess.ShadowMapCount > 0) && ((flags & ShapeFlags.ShadowCaster) != 0))
+            {
                 for (var shadowMapIndex = 0; shadowMapIndex < RenderProcess.ShadowMapCount; shadowMapIndex++)
                     if (IsInShadowMap(shadowMapIndex, mstsLocation, objectRadius, objectViewingDistance))
                         AddShadowPrimitive(shadowMapIndex, material, primitive, ref xnaMatrix, flags);
+                if (HeadlightShadowActive && IsInHeadlightShadowMap(mstsLocation, objectRadius, objectViewingDistance))
+                    AddHeadlightShadowPrimitive(material, primitive, ref xnaMatrix, flags);
+            }
         }
 
         [CallOnThread("Updater")]
@@ -653,6 +694,17 @@ namespace Orts.Viewer3D
         }
 
         [CallOnThread("Updater")]
+        void AddHeadlightShadowPrimitive(Material material, RenderPrimitive primitive, ref Matrix xnaMatrix, ShapeFlags flags)
+        {
+            if (material is SceneryMaterial)
+                RenderHeadlightShadowSceneryItems.Add(new RenderItem(material, primitive, ref xnaMatrix, flags));
+            else if (material is ForestMaterial)
+                RenderHeadlightShadowForestItems.Add(new RenderItem(material, primitive, ref xnaMatrix, flags));
+            else if (material is TerrainMaterial)
+                RenderHeadlightShadowTerrainItems.Add(new RenderItem(material, primitive, ref xnaMatrix, flags));
+        }
+
+        [CallOnThread("Updater")]
         public void Sort()
         {
             var renderItemComparer = new RenderItem.Comparer(CameraLocation);
@@ -702,6 +754,26 @@ namespace Orts.Viewer3D
             return true;
         }
 
+        bool IsInHeadlightShadowMap(Vector3 mstsLocation, float objectRadius, float objectViewingDistance)
+        {
+            mstsLocation.Z *= -1;
+            var lightDrawer = Game.RenderProcess.Viewer?.PlayerLocomotiveViewer?.lightDrawer;
+            if (lightDrawer == null)
+                return false;
+
+            var toObject = mstsLocation - lightDrawer.LightConePosition;
+            var maximumDistance = lightDrawer.LightConeDistance + objectRadius;
+            if (toObject.LengthSquared() > maximumDistance * maximumDistance)
+                return false;
+
+            // Retain objects which overlap the cone. A small angular margin prevents
+            // large pillars and bridge pieces disappearing from the shadow pass.
+            var length = toObject.Length();
+            if (length <= objectRadius || length < 0.001f)
+                return true;
+            return Vector3.Dot(toObject / length, lightDrawer.LightConeDirection) >= lightDrawer.LightConeMinDotProduct - 0.15f;
+        }
+
         static RenderPrimitiveSequence GetRenderSequence(RenderPrimitiveGroup group, bool blended)
         {
             if (blended)
@@ -748,7 +820,27 @@ namespace Orts.Viewer3D
                 DrawShadows(graphicsDevice, logging, shadowMapIndex);
             for (var shadowMapIndex = 0; shadowMapIndex < RenderProcess.ShadowMapCount; shadowMapIndex++)
                 Game.RenderProcess.ShadowPrimitiveCount[shadowMapIndex] = RenderShadowSceneryItems[shadowMapIndex].Count + RenderShadowForestItems[shadowMapIndex].Count + RenderShadowTerrainItems[shadowMapIndex].Count;
+            if (HeadlightShadowActive)
+                DrawHeadlightShadow(graphicsDevice, logging);
             if (logging) Console.WriteLine("  }");
+        }
+
+        void DrawHeadlightShadow(GraphicsDevice graphicsDevice, bool logging)
+        {
+            graphicsDevice.SetRenderTarget(HeadlightShadowMap);
+            graphicsDevice.Clear(ClearOptions.DepthBuffer | ClearOptions.Target, Color.White, 1, 0);
+
+            ShadowMapMaterial.SetState(graphicsDevice, ShadowMapMaterial.Mode.Normal);
+            ShadowMapMaterial.Render(graphicsDevice, RenderHeadlightShadowSceneryItems, ref HeadlightShadowLightView, ref HeadlightShadowLightProj);
+
+            ShadowMapMaterial.SetState(graphicsDevice, ShadowMapMaterial.Mode.Forest);
+            ShadowMapMaterial.Render(graphicsDevice, RenderHeadlightShadowForestItems, ref HeadlightShadowLightView, ref HeadlightShadowLightProj);
+
+            ShadowMapMaterial.SetState(graphicsDevice, ShadowMapMaterial.Mode.Normal);
+            graphicsDevice.Indices = TerrainPrimitive.SharedPatchIndexBuffer;
+            ShadowMapMaterial.Render(graphicsDevice, RenderHeadlightShadowTerrainItems, ref HeadlightShadowLightView, ref HeadlightShadowLightProj);
+            ShadowMapMaterial.ResetState(graphicsDevice);
+            graphicsDevice.SetRenderTarget(null);
         }
 
         void DrawShadows(GraphicsDevice graphicsDevice, bool logging, int shadowMapIndex)
@@ -854,6 +946,13 @@ namespace Orts.Viewer3D
         {
             if (Game.Settings.DynamicShadows && (RenderProcess.ShadowMapCount > 0) && SceneryShader != null)
                 SceneryShader.SetShadowMap(ShadowMapLightViewProjShadowProj, ShadowMap, RenderProcess.ShadowMapLimit);
+            if (SceneryShader != null)
+            {
+                if (HeadlightShadowActive)
+                    SceneryShader.SetHeadlightShadowMap(HeadlightShadowProjection, HeadlightShadowMap);
+                else
+                    SceneryShader.ClearHeadlightShadowMap();
+            }
 
             var renderItems = RenderItemsSequence;
             renderItems.Clear();

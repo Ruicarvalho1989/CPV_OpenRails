@@ -43,6 +43,9 @@ float4   HeadlightPosition;     // xyz = position; w = lighting fading.
 float4   HeadlightDirection;    // xyz = normalized direction (length = distance to light); w = 0.5 * (1 - min dot product).
 float    HeadlightRcpDistance;  // reciprocal length = reciprocal distance to light
 float4   HeadlightColor;        // rgba = color
+float4x4 HeadlightViewProjectionShadowProjection;
+texture  HeadlightShadowMapTexture;
+float    HeadlightShadowMapEnabled;
 float2   Overcast;      // Lower saturation & brightness when overcast. x = FullBrightness, y = HalfBrightness
 float3   ViewerPos;     // Viewer's world coordinates.
 float    ImageTextureIsNight;
@@ -109,6 +112,16 @@ sampler ShadowMap3 = sampler_state
 	MipFilter = Linear;
 };
 
+sampler HeadlightShadowMap = sampler_state
+{
+	Texture = (HeadlightShadowMapTexture);
+	AddressU = Clamp;
+	AddressV = Clamp;
+	MagFilter = Linear;
+	MinFilter = Linear;
+	MipFilter = Point;
+};
+
 ////////////////////    V E R T E X   I N P U T S    ///////////////////////////
 
 struct VERTEX_INPUT
@@ -150,6 +163,7 @@ struct VERTEX_OUTPUT
 	float4 Normal_Light : TEXCOORD2; // normal x, y, z; light dot
 	float4 LightDir_Fog : TEXCOORD3; // light dir x, y, z; fog fade
 	float4 Shadow       : TEXCOORD4; // Level9_1<shadow map texture and depth x, y, z> Level9_3<abs position x, y, z, w>
+	float4 HeadlightShadow : TEXCOORD5;
 };
 
 ////////////////////    V E R T E X   S H A D E R S    /////////////////////////
@@ -204,18 +218,37 @@ void _VSTransferProjection(in VERTEX_INPUT_TRANSFER In, inout VERTEX_OUTPUT Out)
 
 void _VSLightsAndShadows(uniform bool ShaderModel3, in float4 InPosition, inout VERTEX_OUTPUT Out)
 {
+	float4 worldPosition = mul(InPosition, World);
 	// Headlight lighting
-	Out.LightDir_Fog.xyz = mul(InPosition, World).xyz - HeadlightPosition.xyz;
+	Out.LightDir_Fog.xyz = worldPosition.xyz - HeadlightPosition.xyz;
+	Out.HeadlightShadow = mul(worldPosition, HeadlightViewProjectionShadowProjection);
 
 	// Fog fading
 	Out.LightDir_Fog.w = (2.0 / (1.0 + exp(length(Out.Position.xyz) * Fog.a * -2.0))) - 1.0;
 
 	// Absolute position for shadow mapping
 	if (ShaderModel3) {
-		Out.Shadow = mul(InPosition, World);
+		Out.Shadow = worldPosition;
 	} else {
 		Out.Shadow.xyz = mul(mul(InPosition, World), LightViewProjectionShadowProjection0).xyz;
 	}
+}
+
+float _PSGetHeadlightShadowEffect(in VERTEX_OUTPUT In)
+{
+	if (HeadlightShadowMapEnabled < 0.5)
+		return 1;
+
+	float3 shadowPosition = In.HeadlightShadow.xyz;
+	if (shadowPosition.x < 0 || shadowPosition.x > 1 || shadowPosition.y < 0 || shadowPosition.y > 1 || shadowPosition.z < 0 || shadowPosition.z > 1)
+		return 1;
+
+	float2 moments = tex2D(HeadlightShadowMap, shadowPosition.xy).xy;
+	bool notShadowed = shadowPosition.z - moments.x < 0.00015;
+	float variance = clamp(moments.y - moments.x * moments.x, 0.00005, 1.0);
+	float depthDelta = shadowPosition.z - moments.x;
+	float probability = pow(variance / (variance + depthDelta * depthDelta), 20);
+	return saturate(notShadowed + probability);
 }
 
 VERTEX_OUTPUT VSGeneral(uniform bool ShaderModel3, in VERTEX_INPUT In)
@@ -439,6 +472,7 @@ void _PSApplyHeadlights(inout float3 Color, in float3 OriginalColor, in VERTEX_O
 	shading *= saturate(HeadlightDirection.w / (1 - coneDot));
 	shading *= saturate(1 - length(In.LightDir_Fog.xyz) * HeadlightRcpDistance);
 	shading *= HeadlightPosition.w;
+	shading *= _PSGetHeadlightShadowEffect(In);
 	Color += OriginalColor * HeadlightColor.rgb * HeadlightColor.a * shading;
 }
 

@@ -56,6 +56,9 @@ namespace Orts.Viewer3D
         readonly EffectParameter headlightDirection;
         readonly EffectParameter headlightRcpDistance;
         readonly EffectParameter headlightColor;
+        readonly EffectParameter headlightShadowMapTexture;
+        readonly EffectParameter headlightViewProjectionShadowProjection;
+        readonly EffectParameter headlightShadowMapEnabled;
         readonly EffectParameter overcast;
         readonly EffectParameter viewerPos;
         readonly EffectParameter imageTextureIsNight;
@@ -171,6 +174,19 @@ namespace Orts.Viewer3D
         public void SetHeadlightOff()
         {
             headlightPosition.SetValue(Vector4.Zero);
+            headlightShadowMapEnabled.SetValue(0f);
+        }
+
+        public void SetHeadlightShadowMap(Matrix shadowProjection, Texture2D texture)
+        {
+            headlightViewProjectionShadowProjection.SetValue(shadowProjection);
+            headlightShadowMapTexture.SetValue(texture);
+            headlightShadowMapEnabled.SetValue(texture != null ? 1f : 0f);
+        }
+
+        public void ClearHeadlightShadowMap()
+        {
+            headlightShadowMapEnabled.SetValue(0f);
         }
 
         public float SignalLightIntensity { set { signalLightIntensity.SetValue(value); } }
@@ -210,6 +226,9 @@ namespace Orts.Viewer3D
             headlightDirection = Parameters["HeadlightDirection"];
             headlightRcpDistance = Parameters["HeadlightRcpDistance"];
             headlightColor = Parameters["HeadlightColor"];
+            headlightShadowMapTexture = Parameters["HeadlightShadowMapTexture"];
+            headlightViewProjectionShadowProjection = Parameters["HeadlightViewProjectionShadowProjection"];
+            headlightShadowMapEnabled = Parameters["HeadlightShadowMapEnabled"];
             overcast = Parameters["Overcast"];
             viewerPos = Parameters["ViewerPos"];
             imageTextureIsNight = Parameters["ImageTextureIsNight"];

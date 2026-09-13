@@ -8,7 +8,9 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Text;
 using System.Threading;
+using Newtonsoft.Json;
 using Orts.Common;
 using Orts.Formats.Msts;
 using Orts.MultiPlayer;
@@ -181,9 +183,31 @@ namespace Orts.Viewer3D.WebServices
         private static readonly ConcurrentQueue<CPVirtualCommand> pendingCommands = new ConcurrentQueue<CPVirtualCommand>();
         private static long nextCommandId;
         private static volatile CPVirtualCommandResult lastCommand;
+        private static bool multiplayerListenerAttached;
+        private const string MultiplayerPrefix = "CPV1|";
+
+        // CP Virtual is a local web panel, but an Open Rails MP client must not
+        // directly alter its own simulation.  The request travels to the host
+        // over the existing TEXT channel and the host broadcasts the outcome.
+        // Keeping this on the established MP channel avoids changing the wire
+        // protocol used by older Open Rails clients.
+        private static void EnsureMultiplayerListener()
+        {
+            if (multiplayerListenerAttached)
+                return;
+
+            lock (radioLock)
+            {
+                if (multiplayerListenerAttached)
+                    return;
+                MPManager.Instance().MessageReceived += OnMultiplayerMessage;
+                multiplayerListenerAttached = true;
+            }
+        }
 
         public static List<CPVirtualRadioMessage> RadioMessages()
         {
+            EnsureMultiplayerListener();
             lock (radioLock)
                 return new List<CPVirtualRadioMessage>(radioMessages);
         }
@@ -209,6 +233,7 @@ namespace Orts.Viewer3D.WebServices
 
         public static CPVirtualRadioResult SendRadio(CPVirtualRadioRequest request)
         {
+            EnsureMultiplayerListener();
             var result = new CPVirtualRadioResult { Accepted = false, Message = "Mensagem inválida.", AcknowledgementCause = 3 };
             if (request == null || String.IsNullOrWhiteSpace(request.FromRole) ||
                 String.IsNullOrWhiteSpace(request.FromName) || String.IsNullOrWhiteSpace(request.Text))
@@ -221,30 +246,18 @@ namespace Orts.Viewer3D.WebServices
                 return result;
             }
 
-            var message = new CPVirtualRadioMessage
+            if (MPManager.IsClient())
             {
-                MessageId = Interlocked.Increment(ref nextRadioMessageId),
-                SentAtUtc = DateTime.UtcNow,
-                FromRole = request.FromRole.Trim(),
-                FromName = request.FromName.Trim(),
-                TrainNumber = request.TrainNumber,
-                ServiceNumber = request.ServiceNumber,
-                PostId = request.PostId == null ? String.Empty : request.PostId.Trim(),
-                Channel = request.Channel == null ? String.Empty : request.Channel.Trim(),
-                Group = String.IsNullOrWhiteSpace(request.Group) ? "GR" : request.Group.Trim(),
-                SourceDestinationIdentifier = request.SourceDestinationIdentifier,
-                MessageIdentifier = request.MessageIdentifier,
-                AcknowledgementCause = 0,
-                Kind = String.IsNullOrWhiteSpace(request.Kind) ? "radio" : request.Kind.Trim(),
-                Text = request.Text.Trim()
-            };
-
-            lock (radioLock)
-            {
-                radioMessages.Add(message);
-                if (radioMessages.Count > 100)
-                    radioMessages.RemoveRange(0, radioMessages.Count - 100);
+                MPManager.SendToServer(new MSGText(MPManager.GetUserName(), "0Server", SerializeMultiplayer("radio-request", request)).ToString());
+                result.Accepted = true;
+                result.Message = "Mensagem enviada ao controlador da sessão.";
+                result.AcknowledgementCause = 0;
+                return result;
             }
+
+            var message = CreateRadioMessage(request);
+            AddRadioMessage(message);
+            BroadcastRadio(message);
 
             result.Accepted = true;
             result.Message = "Mensagem transmitida.";
@@ -409,9 +422,10 @@ namespace Orts.Viewer3D.WebServices
 
         public static CPVirtualCommandResult Queue(CPVirtualCommand command)
         {
+            EnsureMultiplayerListener();
             var result = new CPVirtualCommandResult
             {
-                CommandId = Interlocked.Increment(ref nextCommandId),
+                CommandId = MPManager.IsClient() ? DateTime.UtcNow.Ticks : Interlocked.Increment(ref nextCommandId),
                 Accepted = false,
                 Message = "Pedido inválido.",
                 Reference = command == null ? -1 : command.Reference,
@@ -420,6 +434,15 @@ namespace Orts.Viewer3D.WebServices
 
             if (command == null || String.IsNullOrWhiteSpace(command.Kind))
                 return Complete(result);
+
+            if (MPManager.IsClient())
+            {
+                command.CommandId = result.CommandId;
+                MPManager.SendToServer(new MSGText(MPManager.GetUserName(), "0Server", SerializeMultiplayer("command-request", command)).ToString());
+                result.Accepted = true;
+                result.Message = "Pedido enviado ao controlador da sessão; aguarda execução.";
+                return result;
+            }
 
             pendingCommands.Enqueue(new CPVirtualCommand
             {
@@ -436,6 +459,9 @@ namespace Orts.Viewer3D.WebServices
 
         public static void ProcessPending(Viewer viewer)
         {
+            // This runs once per viewer frame. It also makes the host ready to
+            // accept Rádio Solo traffic even before its browser panel is opened.
+            EnsureMultiplayerListener();
             CPVirtualCommand command;
             while (pendingCommands.TryDequeue(out command))
                 Execute(viewer, command);
@@ -557,7 +583,126 @@ namespace Orts.Viewer3D.WebServices
         private static CPVirtualCommandResult Complete(CPVirtualCommandResult result)
         {
             lastCommand = result;
+            if (MPManager.IsServer())
+                BroadcastToClients("command-result", result);
             return result;
+        }
+
+        private static CPVirtualRadioMessage CreateRadioMessage(CPVirtualRadioRequest request)
+        {
+            return new CPVirtualRadioMessage
+            {
+                MessageId = Interlocked.Increment(ref nextRadioMessageId),
+                SentAtUtc = DateTime.UtcNow,
+                FromRole = request.FromRole.Trim(),
+                FromName = request.FromName.Trim(),
+                TrainNumber = request.TrainNumber,
+                ServiceNumber = request.ServiceNumber,
+                PostId = request.PostId == null ? String.Empty : request.PostId.Trim(),
+                Channel = request.Channel == null ? String.Empty : request.Channel.Trim(),
+                Group = String.IsNullOrWhiteSpace(request.Group) ? "GR" : request.Group.Trim(),
+                SourceDestinationIdentifier = request.SourceDestinationIdentifier,
+                MessageIdentifier = request.MessageIdentifier,
+                AcknowledgementCause = 0,
+                Kind = String.IsNullOrWhiteSpace(request.Kind) ? "radio" : request.Kind.Trim(),
+                Text = request.Text.Trim()
+            };
+        }
+
+        private static void AddRadioMessage(CPVirtualRadioMessage message)
+        {
+            if (message == null)
+                return;
+            lock (radioLock)
+            {
+                radioMessages.Add(message);
+                if (radioMessages.Count > 100)
+                    radioMessages.RemoveRange(0, radioMessages.Count - 100);
+            }
+        }
+
+        private static string SerializeMultiplayer(string kind, object value)
+        {
+            var json = JsonConvert.SerializeObject(value);
+            return MultiplayerPrefix + kind + "|" + Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
+        }
+
+        private static bool TryReadMultiplayer(string text, out string kind, out string json)
+        {
+            kind = null;
+            json = null;
+            var marker = text == null ? -1 : text.IndexOf(MultiplayerPrefix, StringComparison.Ordinal);
+            if (marker < 0)
+                return false;
+            var payload = text.Substring(marker + MultiplayerPrefix.Length);
+            var separator = payload.IndexOf('|');
+            if (separator <= 0 || separator == payload.Length - 1)
+                return false;
+            try
+            {
+                kind = payload.Substring(0, separator);
+                json = Encoding.UTF8.GetString(Convert.FromBase64String(payload.Substring(separator + 1).Trim()));
+                return true;
+            }
+            catch (FormatException)
+            {
+                return false;
+            }
+        }
+
+        private static void OnMultiplayerMessage(object sender, MPManager.MessageReceivedEventArgs e)
+        {
+            string kind;
+            string json;
+            if (e == null || !TryReadMultiplayer(e.Message, out kind, out json))
+                return;
+
+            try
+            {
+                if (kind == "radio-request" && MPManager.IsServer())
+                {
+                    var request = JsonConvert.DeserializeObject<CPVirtualRadioRequest>(json);
+                    if (request == null || !IsKnownStatusMessage(request.SourceDestinationIdentifier, request.MessageIdentifier))
+                        return;
+                    var message = CreateRadioMessage(request);
+                    AddRadioMessage(message);
+                    BroadcastRadio(message);
+                }
+                else if (kind == "radio-broadcast")
+                {
+                    AddRadioMessage(JsonConvert.DeserializeObject<CPVirtualRadioMessage>(json));
+                }
+                else if (kind == "command-request" && MPManager.IsServer())
+                {
+                    var command = JsonConvert.DeserializeObject<CPVirtualCommand>(json);
+                    if (command != null && !String.IsNullOrWhiteSpace(command.Kind))
+                        pendingCommands.Enqueue(command);
+                }
+                else if (kind == "command-result")
+                {
+                    lastCommand = JsonConvert.DeserializeObject<CPVirtualCommandResult>(json);
+                }
+            }
+            catch (JsonException)
+            {
+                // A malformed peer message must never interrupt the simulator.
+            }
+        }
+
+        private static void BroadcastRadio(CPVirtualRadioMessage message)
+        {
+            if (MPManager.IsServer())
+                BroadcastToClients("radio-broadcast", message);
+        }
+
+        private static void BroadcastToClients(string kind, object value)
+        {
+            if (!MPManager.IsServer())
+                return;
+            var recipients = new List<string>(MPManager.OnlineTrains.Players.Keys);
+            if (recipients.Count == 0)
+                return;
+            MPManager.BroadCast(new MSGText(MPManager.GetUserName(), String.Join("\r", recipients), SerializeMultiplayer(kind, value)).ToString());
         }
 
         private static double? CircuitLatitude(Simulator simulator, TrackCircuitSection circuit)

@@ -510,7 +510,7 @@ namespace Orts.Viewer3D.WebServices
             foreach (var train in viewer.Simulator.TrainDictionary.Values)
             {
                 var aiTrain = train as AITrain;
-                if (aiTrain == null || train.IsActualPlayerTrain || train.Number != order.TrainNumber)
+                if (aiTrain == null || (train.IsActualPlayerTrain && train.IsPlayerDriven) || train.Number != order.TrainNumber)
                     continue;
 
                 CPVirtualAIOrderState state;
@@ -557,7 +557,7 @@ namespace Orts.Viewer3D.WebServices
             {
                 var aiTrain = train as AITrain;
                 CPVirtualAIOrderState state;
-                if (aiTrain == null || train.IsActualPlayerTrain || !aiOrders.TryGetValue(train.Number, out state))
+                if (aiTrain == null || (train.IsActualPlayerTrain && train.IsPlayerDriven) || !aiOrders.TryGetValue(train.Number, out state))
                     continue;
 
                 if (state.StopAtNextStation && aiTrain.MovementState == AITrain.AI_MOVEMENT_STATE.STATION_STOP)

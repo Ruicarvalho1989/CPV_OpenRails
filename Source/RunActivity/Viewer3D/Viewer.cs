@@ -809,8 +809,11 @@ namespace Orts.Viewer3D
                 Camera.AttachedCar.Train.FormationReversed = false;
                 (Camera as TrackingCamera).SwapCameras();
             }
-            CPVirtualDispatcherExport.ProcessPending(this);
             Simulator.Update(elapsedTime.ClockSeconds);
+            // Dispatcher overrides must run after the normal AI update;
+            // otherwise the AI recalculates throttle/brake in the same frame
+            // and immediately cancels the controller's instruction.
+            CPVirtualDispatcherExport.ProcessPending(this);
             if (PlayerLocomotive.Train.BrakingTime == -2) // We just had a wagon with stuck brakes
             {
                 LoadDefectCarSound(PlayerLocomotive.Train.Cars[-(int)PlayerLocomotive.Train.ContinuousBrakingTime], "BrakesStuck.sms");

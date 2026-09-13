@@ -29,6 +29,7 @@
     </section>
     <form id="choice" action="/select" method="get">
       <input id="role" name="role" type="hidden">
+      <label id="profileLabel">Horário e serviço-base<select name="profile">{{CPV_HOST_PROFILES}}</select></label>
       <label id="hostLabel">Servidor/IP<input id="host" name="host" placeholder="127.0.0.1"></label>
       <label id="serviceLabel">Número de serviço<input name="service" placeholder="Ex.: 514"></label>
       <label id="postLabel">Posto de controlo<select name="post"><option value="">Escolher no posto</option><option>Coimbra</option><option>Alfarelos</option></select></label>
@@ -38,11 +39,12 @@
   </main>
   <script>
     const form=document.querySelector('#choice'),role=document.querySelector('#role');
-    const service=document.querySelector('#serviceLabel'),post=document.querySelector('#postLabel'),host=document.querySelector('#hostLabel');
+    const service=document.querySelector('#serviceLabel'),post=document.querySelector('#postLabel'),host=document.querySelector('#hostLabel'),profile=document.querySelector('#profileLabel');
     document.querySelectorAll('[data-role]').forEach(button=>button.addEventListener('click',()=>{
       document.querySelectorAll('[data-role]').forEach(x=>x.classList.remove('active'));button.classList.add('active');
       role.value=button.dataset.role;form.classList.add('active');
       host.style.display=button.dataset.role==='server'?'none':'block';
+      profile.style.display=button.dataset.role==='server'?'block':'none';
       service.style.display=button.dataset.role==='driver'?'block':'none';
       post.style.display=button.dataset.role==='dispatcher'?'block':'none';
       document.querySelector('#host').value=button.dataset.role==='server'?'127.0.0.1':document.querySelector('#host').value;

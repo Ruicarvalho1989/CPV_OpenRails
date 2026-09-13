@@ -57,8 +57,6 @@ namespace Menu
         }
 
         bool Initialized;
-        readonly bool cpVirtualServerAutostart = String.Equals(Environment.GetEnvironmentVariable("CPV_ROLE"), "server", StringComparison.OrdinalIgnoreCase);
-        Timer cpVirtualServerStartTimer;
         UserSettings Settings;
         TelemetryManager TelemetryManager;
         List<Folder> Folders = new List<Folder>();
@@ -159,15 +157,6 @@ namespace Menu
             Cursor = Cursors.Default;
 
             LoadOptions();
-            if (cpVirtualServerAutostart)
-            {
-                // The CP Virtual portal, not the classic menu, owns this
-                // launch. Reuse the stored timetable selection only to supply
-                // the engine with its route and timetable arguments.
-                radioButtonModeTimetable.Checked = true;
-                Opacity = 0;
-                ShowInTaskbar = false;
-            }
             LoadLanguage();
 
             if (!Initialized)
@@ -296,23 +285,6 @@ namespace Menu
                 LoadFolderList();
                 Initialized = true;
             }
-
-            if (cpVirtualServerAutostart)
-                StartCPVirtualServerWhenReady();
-        }
-
-        void StartCPVirtualServerWhenReady()
-        {
-            cpVirtualServerStartTimer = new Timer { Interval = 250 };
-            cpVirtualServerStartTimer.Tick += (sender, e) =>
-            {
-                if (SelectedTimetableSet == null || SelectedTimetable == null || SelectedTimetableTrain == null)
-                    return;
-
-                cpVirtualServerStartTimer.Stop();
-                buttonStart_Click(this, EventArgs.Empty);
-            };
-            cpVirtualServerStartTimer.Start();
         }
 
         private void LoadDocuments(List<ToolStripItem> docs, string folderPath, string code = null)
@@ -340,8 +312,6 @@ namespace Menu
 
         void MainForm_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (cpVirtualServerStartTimer != null)
-                cpVirtualServerStartTimer.Stop();
             SaveOptions();
             if (RouteLoader != null)
                 RouteLoader.Cancel();

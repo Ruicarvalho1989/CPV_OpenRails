@@ -61,6 +61,19 @@ namespace Launcher
             if (selection == null || selection.Role == CPVirtualRole.Dispatcher)
                 return;
 
+            if (selection.Role == CPVirtualRole.Server)
+            {
+                CPVirtualLobby.SaveSelection(selection);
+                var runStart = new ProcessStartInfo(Path.Combine(path, "RunActivity.exe"));
+                runStart.UseShellExecute = false;
+                runStart.WorkingDirectory = path;
+                runStart.Environment["CPV_ROLE"] = "server";
+                runStart.Arguments = "-multiplayerserver -timetable " + Quote(selection.TimetableFile) + " " +
+                    Quote(selection.Timetable + ":" + selection.SeedTrain) + " 0 1 0";
+                Process.Start(runStart);
+                return;
+            }
+
             var menuStart = new ProcessStartInfo(Path.Combine(path, "Menu.exe"));
             menuStart.UseShellExecute = false;
             menuStart.Environment["CPV_ROLE"] = selection.Role.ToString().ToLowerInvariant();
@@ -70,6 +83,11 @@ namespace Launcher
 
             var process = Process.Start(menuStart);
             process.WaitForInputIdle();
+        }
+
+        static string Quote(string value)
+        {
+            return "\"" + (value ?? String.Empty).Replace("\"", "\\\"") + "\"";
         }
 
         static void CheckOR(List<string> missingFiles, string path)

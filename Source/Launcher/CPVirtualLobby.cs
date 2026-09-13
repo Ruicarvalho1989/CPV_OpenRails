@@ -8,6 +8,8 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using ORTS.Menu;
+using ORTS.Settings;
 
 namespace Launcher
 {
@@ -25,6 +27,9 @@ namespace Launcher
         public string Host;
         public string Service;
         public string Post;
+        public string TimetableFile;
+        public string Timetable;
+        public string SeedTrain;
     }
 
     /// <summary>
@@ -36,6 +41,7 @@ namespace Launcher
     {
         private const int Port = 2150;
         private readonly string programPath;
+        private readonly Dictionary<string, CPVirtualLaunchSelection> hostProfiles = new Dictionary<string, CPVirtualLaunchSelection>();
         private TcpListener listener;
 
         public CPVirtualLobby(string programPath)
@@ -111,12 +117,12 @@ namespace Launcher
         {
             var file = Path.Combine(programPath, "Content", "Web", "CPVirtual", "lobby.html");
             if (File.Exists(file))
-                return File.ReadAllText(file, Encoding.UTF8);
+                return File.ReadAllText(file, Encoding.UTF8).Replace("{{CPV_HOST_PROFILES}}", BuildHostProfiles());
             return "<html><body><h1>CP Virtual</h1><p>Falta Content/Web/CPVirtual/lobby.html.</p>" +
                 "<p><a href='/select?role=classic'>Abrir menu clássico</a></p></body></html>";
         }
 
-        private static CPVirtualLaunchSelection ReadSelection(string query)
+        private CPVirtualLaunchSelection ReadSelection(string query)
         {
             var values = ParseQuery(query);
             string roleValue;
@@ -126,6 +132,15 @@ namespace Launcher
             CPVirtualRole role;
             if (!Enum.TryParse(roleValue, true, out role))
                 return null;
+
+            if (role == CPVirtualRole.Server)
+            {
+                string profileKey;
+                CPVirtualLaunchSelection profile;
+                if (!values.TryGetValue("profile", out profileKey) || !hostProfiles.TryGetValue(profileKey, out profile))
+                    return null;
+                return profile;
+            }
 
             string host;
             string service;
@@ -140,6 +155,44 @@ namespace Launcher
                 Service = (service ?? String.Empty).Trim(),
                 Post = (post ?? String.Empty).Trim()
             };
+        }
+
+        private string BuildHostProfiles()
+        {
+            hostProfiles.Clear();
+            var html = new StringBuilder();
+            var settings = new UserSettings(new string[0]);
+            var key = 0;
+
+            try
+            {
+                foreach (var folder in Folder.GetFolders(settings))
+                foreach (var route in Route.GetRoutes(folder))
+                foreach (var timetableSet in TimetableInfo.GetTimetableInfo(folder, route))
+                foreach (var timetable in timetableSet.ORTTList)
+                foreach (var train in timetable.Trains)
+                {
+                    var profileKey = (++key).ToString();
+                    hostProfiles[profileKey] = new CPVirtualLaunchSelection
+                    {
+                        Role = CPVirtualRole.Server,
+                        TimetableFile = timetableSet.fileName,
+                        Timetable = timetable.Description,
+                        SeedTrain = train.Train
+                    };
+                    var label = route.Name + " · " + timetable.Description + " · " + train.Train;
+                    html.Append("<option value='").Append(profileKey).Append("'>")
+                        .Append(WebUtility.HtmlEncode(label)).Append("</option>");
+                }
+            }
+            catch (Exception error)
+            {
+                Trace.WriteLine("CP Virtual timetable discovery: " + error);
+            }
+
+            if (html.Length == 0)
+                return "<option value=''>Nenhum horário Open Rails encontrado</option>";
+            return html.ToString();
         }
 
         private static Dictionary<string, string> ParseQuery(string query)

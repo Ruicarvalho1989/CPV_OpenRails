@@ -1,4 +1,4 @@
-// COPYRIGHT 2026 by CP Virtual contributors.
+kn5}ÎÞuÎžsÇßkMô÷uÝ»}¾\Ó·tñ­¶// COPYRIGHT 2026 by CP Virtual contributors.
 // Browser-first launcher for CP Virtual.
 
 using System;
@@ -175,7 +175,8 @@ namespace Launcher
                 ".card{max-width:620px;margin:auto;background:#172229;border:1px solid #40515b;padding:2rem;border-radius:12px}" +
                 "b{color:#77e4a5}</style><div class='card'><h1>CP Virtual</h1><p><b>Escolha registada.</b></p>" +
                 "<p>O Open Rails vai preparar o modo " + WebUtility.HtmlEncode(selection.Role.ToString()) +
-                ". Esta pÃ¡gina pode ser fechada.</p></div>";
+                ". A pÃ¡gina liga-se automaticamente ao posto quando o motor estiver pronto.</p></div>" +
+                "<script>setInterval(function(){fetch('/CPVirtual/',{cache:'no-store'}).then(function(r){if(r.ok)location.replace('/CPVirtual/');}).catch(function(){});},1000);</script>";
         }
 
         public static void SaveSelection(CPVirtualLaunchSelection selection)

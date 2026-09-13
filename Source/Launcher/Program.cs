@@ -51,8 +51,24 @@ namespace Launcher
                 MessageBox.Show($"{Application.ProductName} is missing the following:\n\n{string.Join("\n", missingORFiles.ToArray())}\n\nPlease re-install the software.", Application.ProductName);
                 return;
             }
-            // Default menu
-            var process = Process.Start(Path.Combine(path, "Menu.exe"));
+            // CP Virtual starts in its browser lobby. The classic Open Rails
+            // menu remains available from the lobby for maintenance and for
+            // content which has not yet been converted to a CPV service.
+            CPVirtualLaunchSelection selection;
+            using (var lobby = new CPVirtualLobby(path))
+                selection = lobby.Run();
+
+            if (selection == null || selection.Role == CPVirtualRole.Dispatcher)
+                return;
+
+            var menuStart = new ProcessStartInfo(Path.Combine(path, "Menu.exe"));
+            menuStart.UseShellExecute = false;
+            menuStart.Environment["CPV_ROLE"] = selection.Role.ToString().ToLowerInvariant();
+            menuStart.Environment["CPV_HOST"] = selection.Host ?? String.Empty;
+            menuStart.Environment["CPV_SERVICE"] = selection.Service ?? String.Empty;
+            CPVirtualLobby.SaveSelection(selection);
+
+            var process = Process.Start(menuStart);
             process.WaitForInputIdle();
         }
 

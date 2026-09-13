@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>CP Virtual · Entrada</title>
+  <style>
+    :root{color-scheme:dark;--bg:#081015;--panel:#172229;--line:#40515b;--red:#e52b36;--green:#77e4a5;--text:#dce7ed;--muted:#93a7b2}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px Segoe UI,Arial,sans-serif}
+    header{height:56px;padding:16px 24px;background:#182229;border-bottom:3px solid var(--red)}header b{color:var(--red);font-size:21px;font-style:italic}
+    main{max-width:1050px;margin:50px auto;padding:0 20px}h1{font-size:28px;margin-bottom:6px}.lead{color:var(--muted);margin-top:0}
+    .roles{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:30px}.role{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:22px;cursor:pointer;text-align:left;color:inherit}
+    .role:hover,.role.active{border-color:var(--green);transform:translateY(-1px)}.role h2{margin:0 0 8px}.role p{color:var(--muted);min-height:54px}
+    form{display:none;margin-top:18px;padding:22px;background:var(--panel);border:1px solid var(--line);border-radius:10px}form.active{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    label{color:var(--muted)}input,select{display:block;width:100%;margin-top:6px;padding:12px;background:#0c171d;color:var(--text);border:1px solid var(--line);border-radius:6px}
+    .actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:10px}button,.classic{padding:12px 20px;border-radius:6px;border:1px solid var(--line);background:#27363e;color:var(--text);font-weight:700;text-decoration:none}.primary{background:#28754d;border-color:#54b982}
+    .note{margin-top:28px;color:var(--muted)}@media(max-width:760px){.roles{grid-template-columns:1fr}form.active{grid-template-columns:1fr}.role p{min-height:0}}
+  </style>
+</head>
+<body>
+  <header><b>CP</b> VIRTUAL · CENTRO DE OPERAÇÕES</header>
+  <main>
+    <h1>Entrar na rede ferroviária</h1>
+    <p class="lead">Escolhe primeiro a tua função. A cabina só será aberta depois de o servidor atribuir um serviço.</p>
+    <section class="roles">
+      <button class="role" data-role="server"><h2>Criar servidor</h2><p>Carrega o horário e mantém os serviços AI e a infraestrutura ativos.</p></button>
+      <button class="role" data-role="driver"><h2>Maquinista</h2><p>Liga-te ao servidor e pede um serviço disponível do horário.</p></button>
+      <button class="role" data-role="dispatcher"><h2>Controlador</h2><p>Entra num posto de controlo pelo navegador, sem abrir uma cabina.</p></button>
+    </section>
+    <form id="choice" action="/select" method="get">
+      <input id="role" name="role" type="hidden">
+      <label id="hostLabel">Servidor/IP<input id="host" name="host" placeholder="127.0.0.1"></label>
+      <label id="serviceLabel">Número de serviço<input name="service" placeholder="Ex.: 514"></label>
+      <label id="postLabel">Posto de controlo<select name="post"><option value="">Escolher no posto</option><option>Coimbra</option><option>Alfarelos</option></select></label>
+      <div class="actions"><a class="classic" href="/select?role=classic">Menu Open Rails</a><button class="primary" type="submit">Continuar</button></div>
+    </form>
+    <p class="note">O anfitrião continuará a executar o motor de simulação. O controlador utiliza apenas esta interface web.</p>
+  </main>
+  <script>
+    const form=document.querySelector('#choice'),role=document.querySelector('#role');
+    const service=document.querySelector('#serviceLabel'),post=document.querySelector('#postLabel'),host=document.querySelector('#hostLabel');
+    document.querySelectorAll('[data-role]').forEach(button=>button.addEventListener('click',()=>{
+      document.querySelectorAll('[data-role]').forEach(x=>x.classList.remove('active'));button.classList.add('active');
+      role.value=button.dataset.role;form.classList.add('active');
+      host.style.display=button.dataset.role==='server'?'none':'block';
+      service.style.display=button.dataset.role==='driver'?'block':'none';
+      post.style.display=button.dataset.role==='dispatcher'?'block':'none';
+      document.querySelector('#host').value=button.dataset.role==='server'?'127.0.0.1':document.querySelector('#host').value;
+    }));
+  </script>
+</body>
+</html>

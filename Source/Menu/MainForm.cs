@@ -49,6 +49,7 @@ namespace Menu
             SingleplayerReplaySaveFromSave,
             MultiplayerServer,
             MultiplayerClient,
+            MultiplayerTimetableServer,
             SinglePlayerTimetableGame,
             SinglePlayerResumeTimetableGame,
             MultiplayerServerResumeSave,
@@ -638,7 +639,13 @@ namespace Menu
             }
             else
             {
-                SelectedAction = UserAction.SinglePlayerTimetableGame;
+                // The CP Virtual server hosts a timetable but must not occupy a
+                // service itself. Program.cs starts it as multiplayer (without
+                // the -start flag) and Simulator turns the seed service over to
+                // its AI/autopilot.
+                SelectedAction = String.Equals(Environment.GetEnvironmentVariable("CPV_ROLE"), "server", StringComparison.OrdinalIgnoreCase)
+                    ? UserAction.MultiplayerTimetableServer
+                    : UserAction.SinglePlayerTimetableGame;
                 if (SelectedTimetableTrain != null)
                     DialogResult = DialogResult.OK;
             }

@@ -517,6 +517,14 @@ namespace Orts.Simulation
                 playerTTTrain.PostInit();               // place player train after pre-running of AI trains
                 if (!TrainDictionary.ContainsKey(playerTTTrain.Number)) TrainDictionary.Add(playerTTTrain.Number, playerTTTrain);
                 if (!NameDictionary.ContainsKey(playerTTTrain.Name.ToLower())) NameDictionary.Add(playerTTTrain.Name.ToLower(), playerTTTrain);
+
+                // A CP Virtual multiplayer host is an infrastructure server,
+                // not a hidden human driver. The timetable loader still needs a
+                // seed train, so let the existing AI/autopilot continue it.
+                // The service registry can later hand this train to an approved
+                // remote driver through the normal train-switch mechanism.
+                if (Settings.MultiplayerServer && String.Equals(Environment.GetEnvironmentVariable("CPV_ROLE"), "server", StringComparison.OrdinalIgnoreCase))
+                    playerTTTrain.SwitchToAutopilotControl();
             }
             IsAutopilotMode = true;
         }

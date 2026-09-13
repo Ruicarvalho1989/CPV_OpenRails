@@ -74,6 +74,12 @@ namespace Menu
                         case MainForm.UserAction.MultiplayerServer:
                             parameters.Add("-multiplayerserver");
                             break;
+                        case MainForm.UserAction.MultiplayerTimetableServer:
+                            // Do not add -start: GameStateRunActivity infers a
+                            // start from the timetable data while retaining the
+                            // multiplayer-server setting.
+                            parameters.Add("-multiplayerserver");
+                            break;
                         case MainForm.UserAction.SinglePlayerTimetableGame:
                             parameters.Add("-start");
                             break;
@@ -125,6 +131,7 @@ namespace Menu
                             parameters.Add("\"" + MainForm.SelectedSaveFile + "\"");
                             break;
                         case MainForm.UserAction.SinglePlayerTimetableGame:
+                        case MainForm.UserAction.MultiplayerTimetableServer:
                             if (String.IsNullOrEmpty(MainForm.SelectedTimetableSet.WeatherFile))
                             {
                                 parameters.Add(String.Format("-timetable \"{0}\" \"{1}:{2}\" {3} {4} {5}",

@@ -1,4 +1,4 @@
-kn5}ÎÞuÎžsÇßkMô÷uÝ»}¾\Ó·tñ­¶// COPYRIGHT 2026 by CP Virtual contributors.
+// COPYRIGHT 2026 by CP Virtual contributors.
 // Browser-first launcher for CP Virtual.
 
 using System;

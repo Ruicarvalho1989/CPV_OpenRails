@@ -549,8 +549,7 @@ namespace Orts.Viewer3D
                 : 8f;
             lampLocation.Location.Y += MathHelper.Clamp(radius, 5f, 12f);
             var lampPosition = Viewer.Camera.XnaLocation(lampLocation);
-            var lampColor = new Vector4(1.0f, 0.68f, 0.34f, 3.5f);
-            SceneryShader.SetSceneryLamp(ref lampPosition, 42f, ref lampColor);
+            SceneryShader.SetSceneryLamp(ref lampPosition, 42f);
         }
 
         internal void UpdateShaders()

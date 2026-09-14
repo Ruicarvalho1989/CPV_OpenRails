@@ -59,7 +59,6 @@ namespace Orts.Viewer3D
         readonly EffectParameter headlightShadowMapTexture;
         readonly EffectParameter headlightViewProjectionShadowProjection;
         readonly EffectParameter headlightShadowMapEnabled;
-        readonly EffectParameter sceneryLampPosition;
         readonly EffectParameter overcast;
         readonly EffectParameter viewerPos;
         readonly EffectParameter imageTextureIsNight;
@@ -79,13 +78,15 @@ namespace Orts.Viewer3D
         Vector3 _sunDirection;
         float _moonlight;
         float _daylightDirectionY;
+        Vector3 _sceneryLampPosition = new Vector3(0, 0, -100001);
+        Vector2 _overcast;
         bool _imageTextureIsNight;
 
         public void SetViewMatrix(ref Matrix v)
         {
             _eyeVector = Vector3.Normalize(new Vector3(v.M13, v.M23, v.M33));
 
-            eyeVector.SetValue(new Vector4(_eyeVector, Vector3.Dot(_eyeVector, _sunDirection) * 0.5f + 0.5f));
+            eyeVector.SetValue(new Vector4(_eyeVector, _sceneryLampPosition.Z));
             sideVector.SetValue(Vector3.Normalize(Vector3.Cross(_eyeVector, Vector3.Down)));
         }
 
@@ -206,19 +207,34 @@ namespace Orts.Viewer3D
             headlightShadowMapEnabled.SetValue(0f);
         }
 
+        void SetOvercastAndLampPosition()
+        {
+            overcast.SetValue(new Vector4(_overcast.X, _overcast.Y, _sceneryLampPosition.X, _sceneryLampPosition.Y));
+            eyeVector.SetValue(new Vector4(_eyeVector, _sceneryLampPosition.Z));
+        }
+
         public void SetSceneryLamp(ref Vector3 position, float range)
         {
-            sceneryLampPosition.SetValue(new Vector4(position, 1f / range));
+            _sceneryLampPosition = position;
+            SetOvercastAndLampPosition();
         }
 
         public void SetSceneryLampOff()
         {
-            sceneryLampPosition.SetValue(new Vector4(0, 0, 0, -1));
+            _sceneryLampPosition = new Vector3(0, 0, -100001);
+            SetOvercastAndLampPosition();
         }
 
         public float SignalLightIntensity { set { signalLightIntensity.SetValue(value); } }
 
-        public float Overcast { set { overcast.SetValue(new Vector2(value, value / 2)); } }
+        public float Overcast
+        {
+            set
+            {
+                _overcast = new Vector2(value, value / 2);
+                SetOvercastAndLampPosition();
+            }
+        }
 
         public Vector3 ViewerPos { set { viewerPos.SetValue(value); } }
 
@@ -256,7 +272,6 @@ namespace Orts.Viewer3D
             headlightShadowMapTexture = Parameters["HeadlightShadowMapTexture"];
             headlightViewProjectionShadowProjection = Parameters["HeadlightViewProjectionShadowProjection"];
             headlightShadowMapEnabled = Parameters["HeadlightShadowMapEnabled"];
-            sceneryLampPosition = Parameters["SceneryLampPosition"];
             overcast = Parameters["Overcast"];
             viewerPos = Parameters["ViewerPos"];
             imageTextureIsNight = Parameters["ImageTextureIsNight"];

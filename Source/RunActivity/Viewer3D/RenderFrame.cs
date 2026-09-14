@@ -409,6 +409,7 @@ namespace Orts.Viewer3D
         ShadowMapMaterial ShadowMapMaterial;
         SceneryShader SceneryShader;
         Vector3 SolarDirection;
+        Vector3 LunarDirection;
         Camera Camera;
         Vector3 CameraLocation;
         Vector3 XNACameraLocation;
@@ -517,9 +518,15 @@ namespace Orts.Viewer3D
                 RenderSurfaceMaterial = new SpriteBatchMaterial(viewer, BlendState.Opaque);
 
             if (viewer.Settings.UseMSTSEnv == false)
+            {
                 SolarDirection = viewer.World.Sky.SolarDirection;
+                LunarDirection = viewer.World.Sky.LunarDirection;
+            }
             else
+            {
                 SolarDirection = viewer.World.MSTSSky.mstsskysolarDirection;
+                LunarDirection = Vector3.Zero;
+            }
 
             if (ShadowMapMaterial == null)
                 ShadowMapMaterial = (ShadowMapMaterial)viewer.MaterialManager.Load("ShadowMap");
@@ -545,10 +552,15 @@ namespace Orts.Viewer3D
 
             if (Game.Settings.DynamicShadows && (RenderProcess.ShadowMapCount > 0) && !LockShadows)
             {
-                var solarDirection = SolarDirection;
-                solarDirection.Normalize();
-                if (Vector3.Dot(SteppedSolarDirection, solarDirection) < 0.99999)
-                    SteppedSolarDirection = solarDirection;
+                // The legacy renderer drew the moon but did not use it as a shadow
+                // light. Once the sun is below the horizon, use the moon only when
+                // it is actually above it; daylight remains controlled by the sun.
+                var shadowLightDirection = SolarDirection;
+                if (SolarDirection.Y < -0.15f && LunarDirection.Y > 0.05f)
+                    shadowLightDirection = LunarDirection;
+                shadowLightDirection.Normalize();
+                if (Vector3.Dot(SteppedSolarDirection, shadowLightDirection) < 0.99999)
+                    SteppedSolarDirection = shadowLightDirection;
 
                 var cameraDirection = new Vector3(-XNACameraView.M13, -XNACameraView.M23, -XNACameraView.M33);
                 cameraDirection.Normalize();

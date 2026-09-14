@@ -497,12 +497,30 @@ namespace Orts.Viewer3D
         float distance = 1000;
         internal void UpdateShaders()
         {
+            Vector3 lunarDirection = Vector3.Zero;
             if (Viewer.Settings.UseMSTSEnv == false)
+            {
                 sunDirection = Viewer.World.Sky.SolarDirection;
+                lunarDirection = Viewer.World.Sky.LunarDirection;
+            }
             else
                 sunDirection = Viewer.World.MSTSSky.mstsskysolarDirection;
 
-            SceneryShader.SetLightVector_ZFar(sunDirection, Viewer.Settings.ViewingDistance);
+            // Use the actual moon as the directional night light. Previously we
+            // only redirected the shadow map, leaving all scenery lit by the sun
+            // below the horizon; that produced visible shadows with virtually no
+            // illumination. Clouds attenuate moonlight strongly.
+            var activeLightDirection = sunDirection;
+            var moonlight = 0f;
+            if (sunDirection.Y < -0.12f && lunarDirection.Y > 0.05f)
+            {
+                activeLightDirection = lunarDirection;
+                moonlight = MathHelper.Clamp((lunarDirection.Y - 0.05f) / 0.45f, 0, 1);
+                moonlight *= 1 - MathHelper.Clamp(Viewer.Simulator.Weather.CloudCoverFactor * 0.8f, 0, 0.8f);
+            }
+
+            SceneryShader.SetLightVector_ZFar(activeLightDirection, Viewer.Settings.ViewingDistance);
+            SceneryShader.SetMoonlight(moonlight, sunDirection.Y);
 
             // Headlight illumination
             if (Viewer.PlayerLocomotiveViewer != null

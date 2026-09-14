@@ -76,6 +76,8 @@ namespace Orts.Viewer3D
         Vector3 _eyeVector;
         Vector4 _zBias_Lighting;
         Vector3 _sunDirection;
+        float _moonlight;
+        float _daylightDirectionY;
         bool _imageTextureIsNight;
 
         public void SetViewMatrix(ref Matrix v)
@@ -98,7 +100,10 @@ namespace Orts.Viewer3D
             //const float HalfShadowBrightness = 0.75;
             const float HalfNightBrightness = 0.6f;
             const float ShadowBrightness = 0.5f;
-            const float NightBrightness = 0.2f;
+            // At night the active directional light can be the moon.  Preserve a
+            // dark night when the moon is below the horizon, but give a clear
+            // moon enough ambient light to reveal the scenery it illuminates.
+            var nightBrightness = MathHelper.Lerp(0.12f, 0.34f, _moonlight);
 
             if (_imageTextureIsNight)
             {
@@ -113,9 +118,9 @@ namespace Orts.Viewer3D
                 const float startNightTrans = 0.1f;
                 const float finishNightTrans = -0.1f;
 
-                var nightEffect = MathHelper.Clamp((_sunDirection.Y - finishNightTrans) / (startNightTrans - finishNightTrans), 0, 1);
+                var nightEffect = MathHelper.Clamp((_daylightDirectionY - finishNightTrans) / (startNightTrans - finishNightTrans), 0, 1);
 
-                nightColorModifier.SetValue(MathHelper.Lerp(NightBrightness, FullBrightness, nightEffect));
+                nightColorModifier.SetValue(MathHelper.Lerp(nightBrightness, FullBrightness, nightEffect));
                 halfNightColorModifier.SetValue(MathHelper.Lerp(HalfNightBrightness, FullBrightness, nightEffect));
                 vegetationAmbientModifier.SetValue(MathHelper.Lerp(ShadowBrightness, FullBrightness, _zBias_Lighting.Y));
             }
@@ -159,6 +164,17 @@ namespace Orts.Viewer3D
         {
             _sunDirection = sunDirection;
             lightVector_ZFar.SetValue(new Vector4(sunDirection.X, sunDirection.Y, sunDirection.Z, zFar));
+        }
+
+        /// <summary>
+        /// Sets the strength of the moon contribution (0 = no visible moon,
+        /// 1 = a high, clear moon). This only affects the night ambient level;
+        /// the directional vector is selected by SharedMaterialManager.
+        /// </summary>
+        public void SetMoonlight(float strength, float daylightDirectionY)
+        {
+            _moonlight = MathHelper.Clamp(strength, 0, 1);
+            _daylightDirectionY = daylightDirectionY;
         }
 
         public void SetHeadlight(ref Vector3 position, ref Vector3 direction, float distance, float minDotProduct, float fadeTime, float fadeDuration, float clampValue, ref Vector4 color)

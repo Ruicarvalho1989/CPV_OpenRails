@@ -379,7 +379,9 @@ namespace Orts.Viewer3D
             SkyShader.Random = Viewer.World.Sky.MoonPhase; // Keep setting this before LightVector for the preshader to work correctly
             SkyShader.LightVector = Viewer.World.Sky.SolarDirection;
             SkyShader.Time = (float)Viewer.Simulator.ClockTime / 100000;
-            SkyShader.MoonScale = SkyPrimitive.RadiusM / 20;
+            // 0.5° is the apparent diameter of the real moon. The old value
+            // made it roughly six times too wide in the 6 km sky dome.
+            SkyShader.MoonScale = SkyPrimitive.RadiusM / 115;
             SkyShader.Overcast = Viewer.Simulator.Weather.CloudCoverFactor;
             SkyShader.SetFog(Viewer.Simulator.Weather.VisibilityM, ref SharedMaterialManager.FogColor);
             SkyShader.CloudScalePosition = Viewer.World.WeatherControl.CloudScalePosition;

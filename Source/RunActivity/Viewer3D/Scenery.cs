@@ -223,6 +223,11 @@ namespace Orts.Viewer3D
         static bool IsLamp(StaticShape shape)
         {
             var sharedShape = shape.SharedShape;
+            // ESD_SubObj is the standard MSTS/Open Rails marker for geometry which
+            // switches on only at night (lamp heads, platform lighting, etc.).
+            if (sharedShape.HasNightSubObj)
+                return true;
+
             var name = Path.GetFileNameWithoutExtension(sharedShape.FilePath);
             return LampKeywords.Any(keyword => name.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0)
                 || sharedShape.ImageNames != null && sharedShape.ImageNames.Any(image => LampKeywords.Any(keyword => image.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0));

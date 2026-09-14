@@ -78,15 +78,13 @@ namespace Orts.Viewer3D
         Vector3 _sunDirection;
         float _moonlight;
         float _daylightDirectionY;
-        Vector3 _sceneryLampPosition = new Vector3(0, 0, -100001);
-        Vector2 _overcast;
         bool _imageTextureIsNight;
 
         public void SetViewMatrix(ref Matrix v)
         {
             _eyeVector = Vector3.Normalize(new Vector3(v.M13, v.M23, v.M33));
 
-            eyeVector.SetValue(new Vector4(_eyeVector, _sceneryLampPosition.Z));
+            eyeVector.SetValue(new Vector4(_eyeVector, Vector3.Dot(_eyeVector, _sunDirection) * 0.5f + 0.5f));
             sideVector.SetValue(Vector3.Normalize(Vector3.Cross(_eyeVector, Vector3.Down)));
         }
 
@@ -207,34 +205,9 @@ namespace Orts.Viewer3D
             headlightShadowMapEnabled.SetValue(0f);
         }
 
-        void SetOvercastAndLampPosition()
-        {
-            overcast.SetValue(new Vector4(_overcast.X, _overcast.Y, _sceneryLampPosition.X, _sceneryLampPosition.Y));
-            eyeVector.SetValue(new Vector4(_eyeVector, _sceneryLampPosition.Z));
-        }
-
-        public void SetSceneryLamp(ref Vector3 position, float range)
-        {
-            _sceneryLampPosition = position;
-            SetOvercastAndLampPosition();
-        }
-
-        public void SetSceneryLampOff()
-        {
-            _sceneryLampPosition = new Vector3(0, 0, -100001);
-            SetOvercastAndLampPosition();
-        }
-
         public float SignalLightIntensity { set { signalLightIntensity.SetValue(value); } }
 
-        public float Overcast
-        {
-            set
-            {
-                _overcast = new Vector2(value, value / 2);
-                SetOvercastAndLampPosition();
-            }
-        }
+        public float Overcast { set { overcast.SetValue(new Vector2(value, value / 2)); } }
 
         public Vector3 ViewerPos { set { viewerPos.SetValue(value); } }
 

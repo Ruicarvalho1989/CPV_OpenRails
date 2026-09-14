@@ -46,7 +46,7 @@ float4   HeadlightColor;        // rgba = color
 float4x4 HeadlightViewProjectionShadowProjection;
 texture  HeadlightShadowMapTexture;
 float    HeadlightShadowMapEnabled;
-float4   Overcast;      // xy = overcast; zw = scenery-lamp position xy
+float2   Overcast;      // Lower saturation & brightness when overcast. x = FullBrightness, y = HalfBrightness
 float3   ViewerPos;     // Viewer's world coordinates.
 float    ImageTextureIsNight;
 float    NightColorModifier;
@@ -339,9 +339,7 @@ VERTEX_OUTPUT VSForest(in VERTEX_INPUT_FOREST In)
 	Out.RelPosition.xyz = mul(In.Position, World).xyz - ViewerPos;
 	Out.RelPosition.w = Out.Position.z;
 	Out.TexCoords.xy = In.TexCoords;
-	// EyeVector.w is packed with the scenery lamp Z coordinate. Forest lighting
-	// still needs the original normal-light value, so calculate it locally.
-	Out.Normal_Light = float4(EyeVector.xyz, dot(EyeVector.xyz, LightVector_ZFar.xyz) * 0.5 + 0.5);
+	Out.Normal_Light = EyeVector;
 
 	_VSLightsAndShadows(false, In.Position, Out);
 
@@ -479,21 +477,6 @@ void _PSApplyHeadlights(uniform bool HeadlightShadows, inout float3 Color, in fl
 	Color += OriginalColor * HeadlightColor.rgb * HeadlightColor.a * shading;
 }
 
-// A separate local light for legacy scenery lamps. Unlike HeadlightPosition it
-// never shares state with the player train; only the closest detected lamp is
-// active, keeping the cost bounded for old routes with thousands of posts.
-float _PSGetSceneryLamp(in VERTEX_OUTPUT In)
-{
-	float3 lampPosition = float3(Overcast.z, Overcast.w, EyeVector.w);
-	if (lampPosition.z < -100000) return 0;
-	float3 lampToSurface = lampPosition - In.RelPosition.xyz;
-	float lampDistance = length(lampToSurface);
-	float attenuation = saturate(1 - lampDistance / 42.0);
-	attenuation *= attenuation;
-	float diffuse = saturate(dot(In.Normal_Light.xyz, lampToSurface / max(lampDistance, 0.001)));
-	return attenuation * (0.15 + 0.85 * diffuse) * 3.5;
-}
-
 // Applies distance fog to the pixel.
 void _PSApplyFog(inout float3 Color, in VERTEX_OUTPUT In)
 {
@@ -540,16 +523,12 @@ float4 PSImage(uniform bool ShaderModel3, uniform bool ClampTexCoords, in VERTEX
 
 float4 PSImage9_3(in VERTEX_OUTPUT In) : COLOR0
 {
-    float4 Color = PSImage(true, false, In);
-    Color.rgb += Color.rgb * float3(1.0, 0.68, 0.34) * _PSGetSceneryLamp(In);
-    return Color;
+    return PSImage(true, false, In);
 }
 
 float4 PSImage9_3Clamp(in VERTEX_OUTPUT In) : COLOR0
 {
-    float4 Color = PSImage(true, true, In);
-    Color.rgb += Color.rgb * float3(1.0, 0.68, 0.34) * _PSGetSceneryLamp(In);
-    return Color;
+    return PSImage(true, true, In);
 }
 
 float4 PSImage9_1(in VERTEX_OUTPUT In) : COLOR0
@@ -603,9 +582,7 @@ float4 PSTerrain(uniform bool ShaderModel3, in VERTEX_OUTPUT In) : COLOR0
 
 float4 PSTerrain9_3(in VERTEX_OUTPUT In) : COLOR0
 {
-    float4 Color = PSTerrain(true, In);
-    Color.rgb += Color.rgb * float3(1.0, 0.68, 0.34) * _PSGetSceneryLamp(In);
-    return Color;
+    return PSTerrain(true, In);
 }
 
 float4 PSTerrain9_1(in VERTEX_OUTPUT In) : COLOR0

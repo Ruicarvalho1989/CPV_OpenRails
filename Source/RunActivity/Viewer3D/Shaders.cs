@@ -549,6 +549,28 @@ namespace Orts.Viewer3D
         }
     }
 
+    /// <summary>Dedicated shader for the ground pools emitted by route lamp posts.</summary>
+    [CallOnThread("Render")]
+    public class SceneryLampShader : Shader
+    {
+        readonly EffectParameter worldViewProjection;
+        readonly EffectParameter intensity;
+
+        public float Intensity { set { intensity.SetValue(value); } }
+
+        public void SetMatrix(ref Matrix wvp)
+        {
+            worldViewProjection.SetValueTranspose(wvp);
+        }
+
+        public SceneryLampShader(GraphicsDevice graphicsDevice)
+            : base(graphicsDevice, "SceneryLampShader")
+        {
+            worldViewProjection = Parameters["WorldViewProjection"];
+            intensity = Parameters["Intensity"];
+        }
+    }
+
     [CallOnThread("Render")]
     public class LightConeShader : Shader
     {

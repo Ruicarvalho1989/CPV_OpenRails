@@ -257,6 +257,7 @@ namespace Orts.Viewer3D
 
         public readonly LightConeShader LightConeShader;
         public readonly LightGlowShader LightGlowShader;
+        public readonly SceneryLampShader SceneryLampShader;
         public readonly ParticleEmitterShader ParticleEmitterShader;
         public readonly PopupWindowShader PopupWindowShader;
         public readonly PrecipitationShader PrecipitationShader;
@@ -277,6 +278,7 @@ namespace Orts.Viewer3D
             // TODO: Move to Loader process.
             LightConeShader = new LightConeShader(viewer.RenderProcess.GraphicsDevice);
             LightGlowShader = new LightGlowShader(viewer.RenderProcess.GraphicsDevice);
+            SceneryLampShader = new SceneryLampShader(viewer.RenderProcess.GraphicsDevice);
             ParticleEmitterShader = new ParticleEmitterShader(viewer.RenderProcess.GraphicsDevice);
             PopupWindowShader = new PopupWindowShader(viewer, viewer.RenderProcess.GraphicsDevice);
             PrecipitationShader = new PrecipitationShader(viewer.RenderProcess.GraphicsDevice);
@@ -341,6 +343,9 @@ namespace Orts.Viewer3D
                         break;
                     case "LightGlow":
                         Materials[materialKey] = new LightGlowMaterial(Viewer, textureName);
+                        break;
+                    case "SceneryLamp":
+                        Materials[materialKey] = new SceneryLampMaterial(Viewer);
                         break;
                     case "PopupWindow":
                         Materials[materialKey] = new PopupWindowMaterial(Viewer);
@@ -666,6 +671,78 @@ namespace Orts.Viewer3D
         {
             return true;
         }
+    }
+
+    /// <summary>A shared unit quad. Each lamp instance supplies its position and radius through its world matrix.</summary>
+    public sealed class SceneryLampPrimitive : RenderPrimitive
+    {
+        public override void Draw(GraphicsDevice graphicsDevice)
+        {
+            graphicsDevice.DrawPrimitives(PrimitiveType.TriangleStrip, 0, 2);
+        }
+    }
+
+    /// <summary>
+    /// Renders a soft, additive pool of light on the ground. This intentionally owns a
+    /// separate effect so legacy scenery shaders and train headlights never share state.
+    /// </summary>
+    public sealed class SceneryLampMaterial : Material
+    {
+        VertexBuffer vertexBuffer;
+
+        public SceneryLampMaterial(Viewer viewer) : base(viewer, null) { }
+
+        void EnsureVertexBuffer(GraphicsDevice graphicsDevice)
+        {
+            if (vertexBuffer != null)
+                return;
+
+            var vertices = new[] {
+                new VertexPositionColorTexture(new Vector3(-1, 0, -1), Color.White, new Vector2(0, 0)),
+                new VertexPositionColorTexture(new Vector3( 1, 0, -1), Color.White, new Vector2(1, 0)),
+                new VertexPositionColorTexture(new Vector3(-1, 0,  1), Color.White, new Vector2(0, 1)),
+                new VertexPositionColorTexture(new Vector3( 1, 0,  1), Color.White, new Vector2(1, 1)),
+            };
+            vertexBuffer = new VertexBuffer(graphicsDevice, typeof(VertexPositionColorTexture), vertices.Length, BufferUsage.WriteOnly);
+            vertexBuffer.SetData(vertices);
+        }
+
+        public override void SetState(GraphicsDevice graphicsDevice, Material previousMaterial)
+        {
+            var shader = Viewer.MaterialManager.SceneryLampShader;
+            shader.CurrentTechnique = shader.Techniques["SceneryLamp"];
+            graphicsDevice.BlendState = BlendState.Additive;
+            graphicsDevice.DepthStencilState = DepthStencilState.DepthRead;
+            graphicsDevice.RasterizerState = RasterizerState.CullNone;
+        }
+
+        public override void Render(GraphicsDevice graphicsDevice, IEnumerable<RenderItem> renderItems, ref Matrix XNAViewMatrix, ref Matrix XNAProjectionMatrix)
+        {
+            var shader = Viewer.MaterialManager.SceneryLampShader;
+            EnsureVertexBuffer(graphicsDevice);
+            graphicsDevice.SetVertexBuffer(vertexBuffer);
+
+            foreach (var pass in shader.CurrentTechnique.Passes)
+            {
+                foreach (var item in renderItems)
+                {
+                    Matrix wvp = item.XNAMatrix * XNAViewMatrix * Viewer.Camera.XnaProjection;
+                    shader.SetMatrix(ref wvp);
+                    shader.Intensity = item.ItemData is float intensity ? intensity : 1f;
+                    pass.Apply();
+                    item.RenderPrimitive.Draw(graphicsDevice);
+                }
+            }
+        }
+
+        public override void ResetState(GraphicsDevice graphicsDevice)
+        {
+            graphicsDevice.BlendState = BlendState.Opaque;
+            graphicsDevice.DepthStencilState = DepthStencilState.Default;
+            graphicsDevice.RasterizerState = RasterizerState.CullCounterClockwise;
+        }
+
+        public override bool GetBlending() { return true; }
     }
 
     public class SpriteBatchMaterial : BasicBlendedMaterial

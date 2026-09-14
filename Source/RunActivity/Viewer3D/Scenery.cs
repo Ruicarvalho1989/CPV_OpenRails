@@ -59,6 +59,11 @@ namespace Orts.Viewer3D
     public class SceneryDrawer
     {
         readonly Viewer Viewer;
+        static readonly string[] LampKeywords = { "lamp", "light", "luz", "lumin", "ilum", "poste", "candee", "foco", "glow", "halo" };
+        readonly List<StaticShape> LampCandidates = new List<StaticShape>();
+        readonly SceneryLampPrimitive LampPrimitive = new SceneryLampPrimitive();
+        List<WorldFile> LampWorldFiles;
+        Material LampMaterial;
 
         // THREAD SAFETY:
         //   All accesses must be done in local variables. No modifications to the objects are allowed except by
@@ -78,6 +83,8 @@ namespace Orts.Viewer3D
         public void Load()
         {
             var cancellation = Viewer.LoaderProcess.CancellationToken;
+            if (LampMaterial == null)
+                LampMaterial = Viewer.MaterialManager.Load("SceneryLamp");
 
             if (TileX != VisibleTileX || TileZ != VisibleTileZ)
             {
@@ -209,6 +216,58 @@ namespace Orts.Viewer3D
                 // TODO: This might impair some shadows.
                 if (Viewer.Camera.InFov(new Vector3((worldFile.TileX - Viewer.Camera.TileX) * 2048, 0, (worldFile.TileZ - Viewer.Camera.TileZ) * 2048), 1448))
                     worldFile.PrepareFrame(frame, elapsedTime);
+
+            PrepareLampPools(frame, worldFiles);
+        }
+
+        static bool IsLamp(StaticShape shape)
+        {
+            var sharedShape = shape.SharedShape;
+            var name = Path.GetFileNameWithoutExtension(sharedShape.FilePath);
+            return LampKeywords.Any(keyword => name.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0)
+                || sharedShape.ImageNames != null && sharedShape.ImageNames.Any(image => LampKeywords.Any(keyword => image.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0));
+        }
+
+        [CallOnThread("Updater")]
+        void PrepareLampPools(RenderFrame frame, List<WorldFile> worldFiles)
+        {
+            if (LampMaterial == null)
+                return;
+
+            var sunDirection = Viewer.Settings.UseMSTSEnv ? Viewer.World.MSTSSky.mstsskysolarDirection : Viewer.World.Sky.SolarDirection;
+            var night = MathHelper.Clamp((-sunDirection.Y - 0.02f) / 0.18f, 0, 1);
+            if (night <= 0)
+                return;
+
+            if (!ReferenceEquals(LampWorldFiles, worldFiles))
+            {
+                LampWorldFiles = worldFiles;
+                LampCandidates.Clear();
+                foreach (var worldFile in worldFiles)
+                    LampCandidates.AddRange(worldFile.sceneryObjects.Where(IsLamp));
+            }
+
+            const int maximumVisibleLamps = 32;
+            const float maximumDistance = 150f;
+            var selected = new List<(StaticShape Shape, float DistanceSquared)>();
+            var cameraLocation = Viewer.Camera.CameraWorldLocation;
+            foreach (var candidate in LampCandidates)
+            {
+                var distanceSquared = WorldLocation.GetDistanceSquared(candidate.Location.WorldLocation, cameraLocation);
+                if (distanceSquared > maximumDistance * maximumDistance)
+                    continue;
+                selected.Add((candidate, distanceSquared));
+            }
+
+            foreach (var lamp in selected.OrderBy(item => item.DistanceSquared).Take(maximumVisibleLamps))
+            {
+                var position = Viewer.Camera.XnaLocation(lamp.Shape.Location.WorldLocation);
+                position.Y += 0.08f;
+                var radius = 14f;
+                var xnaMatrix = Matrix.CreateScale(radius, 1, radius) * Matrix.CreateTranslation(position);
+                var distanceFade = 1 - MathHelper.Clamp((float)Math.Sqrt(lamp.DistanceSquared) / maximumDistance, 0, 1);
+                frame.AddPrimitive(LampMaterial, LampPrimitive, RenderPrimitiveGroup.Lights, ref xnaMatrix, ShapeFlags.None, night * distanceFade * 0.7f);
+            }
         }
 
         WorldFile LoadWorldFile(int tileX, int tileZ, bool visible)

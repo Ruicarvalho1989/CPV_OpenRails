@@ -495,6 +495,63 @@ namespace Orts.Viewer3D
         float fadeDuration = -1;
         float clampValue = 1;
         float distance = 1000;
+        static readonly string[] SceneryLampKeywords = { "lamp", "light", "luz", "foco", "candee", "glow", "halo" };
+        List<WorldFile> sceneryLampWorldFiles;
+        readonly List<StaticShape> sceneryLampCandidates = new List<StaticShape>();
+
+        static bool IsSceneryLamp(StaticShape shape)
+        {
+            var sharedShape = shape.SharedShape;
+            var shapeName = Path.GetFileNameWithoutExtension(sharedShape.FilePath);
+            return SceneryLampKeywords.Any(keyword => shapeName.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0)
+                || sharedShape.ImageNames != null && sharedShape.ImageNames.Any(imageName => SceneryLampKeywords.Any(keyword => imageName.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0));
+        }
+
+        void UpdateSceneryLamp()
+        {
+            if (sunDirection.Y >= -0.05f)
+            {
+                SceneryShader.SetSceneryLampOff();
+                return;
+            }
+
+            var worldFiles = Viewer.World.Scenery.WorldFiles;
+            if (!ReferenceEquals(sceneryLampWorldFiles, worldFiles))
+            {
+                sceneryLampWorldFiles = worldFiles;
+                sceneryLampCandidates.Clear();
+                foreach (var worldFile in worldFiles)
+                    sceneryLampCandidates.AddRange(worldFile.sceneryObjects.Where(IsSceneryLamp));
+            }
+
+            var cameraLocation = Viewer.Camera.CameraWorldLocation;
+            var nearestDistanceSquared = 55f * 55f;
+            StaticShape nearestLamp = null;
+            foreach (var shape in sceneryLampCandidates)
+            {
+                var distanceSquared = WorldLocation.GetDistanceSquared(shape.Location.WorldLocation, cameraLocation);
+                if (distanceSquared < nearestDistanceSquared)
+                {
+                    nearestDistanceSquared = distanceSquared;
+                    nearestLamp = shape;
+                }
+            }
+
+            if (nearestLamp == null)
+            {
+                SceneryShader.SetSceneryLampOff();
+                return;
+            }
+
+            var lampLocation = nearestLamp.Location.WorldLocation;
+            var radius = nearestLamp.SharedShape.LodControls.Length > 0 && nearestLamp.SharedShape.LodControls[0].DistanceLevels.Length > 0
+                ? nearestLamp.SharedShape.LodControls[0].DistanceLevels[0].ViewSphereRadius
+                : 8f;
+            lampLocation.Location.Y += MathHelper.Clamp(radius, 5f, 12f);
+            var lampPosition = Viewer.Camera.XnaLocation(lampLocation);
+            var lampColor = new Vector4(1.0f, 0.68f, 0.34f, 3.5f);
+            SceneryShader.SetSceneryLamp(ref lampPosition, 42f, ref lampColor);
+        }
 
         internal void UpdateShaders()
         {
@@ -522,6 +579,7 @@ namespace Orts.Viewer3D
 
             SceneryShader.SetLightVector_ZFar(activeLightDirection, Viewer.Settings.ViewingDistance);
             SceneryShader.SetMoonlight(moonlight, sunDirection.Y);
+            UpdateSceneryLamp();
 
             // Headlight illumination
             if (Viewer.PlayerLocomotiveViewer != null

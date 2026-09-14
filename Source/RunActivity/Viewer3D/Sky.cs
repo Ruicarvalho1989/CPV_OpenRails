@@ -103,12 +103,10 @@ namespace Orts.Viewer3D
                 LunarPositionCache[i] = SunMoonPos.LunarAngle(Latitude, Longitude, (float)i / SkyInterpolation.MaxSteps, date);
             }
 
-            // Phase of the moon is generated at random, but moon dog only occurs in winter
-            MoonPhase = Viewer.Random.Next(8);
-            if (MoonPhase == 6 && date.OrdinalDate > 45 && date.OrdinalDate < 330)
-            {
-                MoonPhase = 3;
-            }
+            // Use the detailed full-moon tile. The former random phase selection
+            // frequently chose a hard black-and-white crescent, which looked like
+            // a cut-out sprite and did not match the visible moon illumination.
+            MoonPhase = 2;
         }
 
         public struct SkyDate
@@ -379,10 +377,11 @@ namespace Orts.Viewer3D
             SkyShader.Random = Viewer.World.Sky.MoonPhase; // Keep setting this before LightVector for the preshader to work correctly
             SkyShader.LightVector = Viewer.World.Sky.SolarDirection;
             SkyShader.Time = (float)Viewer.Simulator.ClockTime / 100000;
-            // Slightly enlarged over the physical angular size so the moon
-            // remains readable at normal gameplay resolutions, without the
-            // oversized "painted" appearance of the original setting.
-            SkyShader.MoonScale = SkyPrimitive.RadiusM / 70;
+            // Deliberately enlarged over the 0.5° physical angular size: that
+            // size is only a handful of pixels at gameplay FOVs. This keeps the
+            // photographed lunar relief visible without returning to the giant
+            // original sprite.
+            SkyShader.MoonScale = SkyPrimitive.RadiusM / 28;
             SkyShader.Overcast = Viewer.Simulator.Weather.CloudCoverFactor;
             SkyShader.SetFog(Viewer.Simulator.Weather.VisibilityM, ref SharedMaterialManager.FogColor);
             SkyShader.CloudScalePosition = Viewer.World.WeatherControl.CloudScalePosition;

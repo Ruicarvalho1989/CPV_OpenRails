@@ -495,6 +495,75 @@ namespace Orts.Viewer3D
         float fadeDuration = -1;
         float clampValue = 1;
         float distance = 1000;
+        static readonly string[] SceneryLampKeywords = { "lamp", "light", "luz", "foco", "candee", "glow", "halo" };
+        List<WorldFile> sceneryLampWorldFiles;
+        readonly List<StaticShape> sceneryLampCandidates = new List<StaticShape>();
+
+        static bool IsSceneryLamp(StaticShape shape)
+        {
+            var sharedShape = shape.SharedShape;
+            var shapeName = Path.GetFileNameWithoutExtension(sharedShape.FilePath);
+            return SceneryLampKeywords.Any(keyword => shapeName.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0)
+                || sharedShape.ImageNames != null && sharedShape.ImageNames.Any(imageName => SceneryLampKeywords.Any(keyword => imageName.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0));
+        }
+
+        bool TryGetNearestSceneryLamp(out Vector3 position)
+        {
+            position = Vector3.Zero;
+            var cameraLocation = Viewer.Camera.CameraWorldLocation;
+            var nearestDistanceSquared = 75f * 75f;
+            StaticShape nearestLamp = null;
+
+            // WorldFiles is replaced atomically by the loader. Build candidates
+            // only when that immutable snapshot changes; never scan all scenery
+            // objects every render frame.
+            var worldFiles = Viewer.World.Scenery.WorldFiles;
+            if (!ReferenceEquals(sceneryLampWorldFiles, worldFiles))
+            {
+                sceneryLampWorldFiles = worldFiles;
+                sceneryLampCandidates.Clear();
+                foreach (var worldFile in worldFiles)
+                {
+                    sceneryLampCandidates.AddRange(worldFile.sceneryObjects.Where(IsSceneryLamp));
+                }
+            }
+
+            foreach (var shape in sceneryLampCandidates)
+            {
+                var distanceSquared = WorldLocation.GetDistanceSquared(shape.Location.WorldLocation, cameraLocation);
+                if (distanceSquared >= nearestDistanceSquared)
+                    continue;
+
+                nearestDistanceSquared = distanceSquared;
+                nearestLamp = shape;
+            }
+
+            if (nearestLamp == null)
+                return false;
+
+            var lampLocation = nearestLamp.Location.WorldLocation;
+            // Most legacy scenery does not expose a luminaire attachment point.
+            // Use the model's bounding radius as a robust estimate, with sane
+            // limits for common 5–12 m station and street-light posts.
+            var radius = nearestLamp.SharedShape.LodControls.Length > 0 && nearestLamp.SharedShape.LodControls[0].DistanceLevels.Length > 0
+                ? nearestLamp.SharedShape.LodControls[0].DistanceLevels[0].ViewSphereRadius
+                : 8f;
+            lampLocation.Location.Y += MathHelper.Clamp(radius, 5f, 12f);
+            position = Viewer.Camera.XnaLocation(lampLocation);
+            return true;
+        }
+
+        bool TrySetNearestSceneryLamp()
+        {
+            if (sunDirection.Y >= -0.05f || !TryGetNearestSceneryLamp(out var lampPosition))
+                return false;
+
+            var lampDirection = Vector3.Down;
+            var lampColor = new Vector4(1.0f, 0.78f, 0.46f, 1.0f);
+            SceneryShader.SetHeadlight(ref lampPosition, ref lampDirection, 38f, 0.55f, 1, 1, 0.9f, ref lampColor);
+            return true;
+        }
+
         internal void UpdateShaders()
         {
             Vector3 lunarDirection = Vector3.Zero;
@@ -548,8 +617,11 @@ namespace Orts.Viewer3D
                     fadeDuration = 0;
                 }
                 if (!lightState && fadeDuration == 0)
+                {
                     // This occurs when switching locos and needs to be handled or we get lingering light.
-                    SceneryShader.SetHeadlightOff();
+                    if (!TrySetNearestSceneryLamp())
+                        SceneryShader.SetHeadlightOff();
+                }
                 else
                 {
                     if (sunDirection.Y <= -0.05)
@@ -573,7 +645,14 @@ namespace Orts.Viewer3D
             }
             else
             {
-                SceneryShader.SetHeadlightOff();
+                // Reuse the existing, well-tested headlight light path for the
+                // nearest legacy scenery lamp. This lets old routes gain local
+                // night illumination without changing any world file or shape.
+                // A real player headlight always takes precedence.
+                if (!TrySetNearestSceneryLamp())
+                {
+                    SceneryShader.SetHeadlightOff();
+                }
             }
             // End headlight illumination
             if (Viewer.Settings.UseMSTSEnv == false)

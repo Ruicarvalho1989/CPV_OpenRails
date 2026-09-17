@@ -372,6 +372,16 @@ namespace Orts.Simulation.AIs
                 }
 
                 // Prerun finished - check if train from which player train originates has run and is finished
+                // Dedicated CP Virtual hosts deliberately do not have a player
+                // train. All services remain in the normal AI lifecycle until a
+                // remote driver claims one, so there is no player formation or
+                // pool condition to wait for here.
+                if (playerTrain == null)
+                {
+                    Simulator.PreUpdate = false;
+                    return;
+                }
+
                 bool delayedrun = false;
                 bool OrgTrainNotStarted = false;
                 TTTrain OrgTrain = null;

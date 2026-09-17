@@ -29,10 +29,10 @@
     </section>
     <form id="choice" action="/select" method="get">
       <input id="role" name="role" type="hidden">
-      <label id="profileLabel">Horário e serviço-base<select name="profile">{{CPV_HOST_PROFILES}}</select></label>
+      <label id="profileLabel">Horário da sessão<select name="profile">{{CPV_HOST_PROFILES}}</select></label>
       <label id="hostLabel">Servidor/IP<input id="host" name="host" placeholder="127.0.0.1"></label>
-      <label id="serviceLabel">Número de serviço<input name="service" placeholder="Ex.: 514"></label>
-      <label id="postLabel">Posto de controlo<select name="post"><option value="">Escolher no posto</option><option>Coimbra</option><option>Alfarelos</option></select></label>
+      <label id="serviceLabel">Código do serviço<input name="service" required pattern="[A-Za-z0-9_-]+" placeholder="Ex.: 4333"></label>
+      <label id="postLabel">Estação ou posto<input name="post" placeholder="Pesquisar depois no quadro"></label>
       <label class="visual"><input name="visual" value="realistic" type="checkbox"><span><b>Visual realista (teste)</b><br>Sombras 2K, maior distância de visão, 8x MSAA e brilho de sinais. Recomendado para RTX 3090; pode reduzir FPS.</span></label>
       <div class="actions"><a class="classic" href="/select?role=classic">Menu Open Rails</a><button class="primary" type="submit">Continuar</button></div>
     </form>
@@ -48,6 +48,7 @@
       profile.style.display=button.dataset.role==='server'?'block':'none';
       service.style.display=button.dataset.role==='driver'?'block':'none';
       post.style.display=button.dataset.role==='dispatcher'?'block':'none';
+      document.querySelector('[name=service]').required=button.dataset.role==='driver';
       document.querySelector('#host').value=button.dataset.role==='server'?'127.0.0.1':document.querySelector('#host').value;
     }));
   </script>

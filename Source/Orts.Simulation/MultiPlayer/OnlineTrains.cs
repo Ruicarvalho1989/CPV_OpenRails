@@ -145,6 +145,26 @@ namespace Orts.MultiPlayer
             p.LeadingLocomotiveID = player.leadingID;
             p.con = MPManager.Simulator.BasePath + "\\TRAINS\\CONSISTS\\" + player.con;
             p.path = MPManager.Simulator.RoutePath + "\\PATHS\\" + player.path;
+
+            // A CP Virtual timetable host keeps every service under AI until a
+            // remote driver asks for its service number. Re-use that train on
+            // the authoritative server; the legacy multiplayer behaviour would
+            // otherwise create a duplicate remote consist at the same location.
+            if (MPManager.IsServer() && String.Equals(Environment.GetEnvironmentVariable("CPV_ROLE"), "server", StringComparison.OrdinalIgnoreCase))
+            {
+                Train assignedTrain = MPManager.Simulator.Trains.GetTrainByNumber(player.num);
+                if (assignedTrain != null && !findTrain(assignedTrain))
+                {
+                    assignedTrain.TrainType = Train.TRAINTYPE.REMOTE;
+                    p.Username = player.user;
+                    p.Train = assignedTrain;
+                    Players.Add(player.user, p);
+                    MPManager.Instance().AddOrRemoveTrain(assignedTrain, true);
+                    Trace.TraceInformation("CP Virtual: service {0} assigned to {1}", player.num, player.user);
+                    return;
+                }
+            }
+
             Train train = new Train(MPManager.Simulator);
             train.TrainType = Train.TRAINTYPE.REMOTE;
             if (MPManager.IsServer()) //server needs to worry about correct train number

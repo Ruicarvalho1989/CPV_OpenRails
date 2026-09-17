@@ -704,9 +704,20 @@ namespace Orts.MultiPlayer
 
             MPManager.Instance().lastPlayerAddedTime = MPManager.Simulator.GameTime;
 
-            MSGPlayer host = new MSGPlayer(MPManager.GetUserName(), "1234", MPManager.Simulator.conFileName, MPManager.Simulator.patFileName, MPManager.Simulator.PlayerLocomotive.Train,
-                MPManager.Simulator.PlayerLocomotive.Train.Number, MPManager.Simulator.Settings.AvatarURL);
-            SendToPlayer(p, host.ToString() + MPManager.OnlineTrains.AddAllPlayerTrain());
+            // A CP Virtual dedicated timetable host deliberately has no local
+            // player locomotive. Use an active service only as a protocol
+            // snapshot so that joining clients can receive the world state.
+            Train hostTrain = MPManager.Simulator.PlayerLocomotive?.Train ?? MPManager.Simulator.Trains.FirstOrDefault(t => t != null && t.Cars.Count > 0);
+            if (hostTrain != null)
+            {
+                MSGPlayer host = new MSGPlayer(MPManager.GetUserName(), "1234", MPManager.Simulator.conFileName, MPManager.Simulator.patFileName, hostTrain,
+                    hostTrain.Number, MPManager.Simulator.Settings.AvatarURL);
+                SendToPlayer(p, host.ToString() + MPManager.OnlineTrains.AddAllPlayerTrain());
+            }
+            else
+            {
+                SendToPlayer(p, MPManager.OnlineTrains.AddAllPlayerTrain());
+            }
 
             //send the train information to the new player
             Train[] trains = MPManager.Simulator.Trains.ToArray();
@@ -723,7 +734,7 @@ namespace Orts.MultiPlayer
             SendToPlayer(p, MPManager.Instance().GetEnvInfo());//update weather
 
             //send the new player information to everyone else
-            host = new MSGPlayer(p.Username, "1234", p.con, p.path, p.Train, p.Train.Number, p.url);
+            var host = new MSGPlayer(p.Username, "1234", p.con, p.path, p.Train, p.Train.Number, p.url);
             var players = MPManager.OnlineTrains.Players.ToArray();
             string newPlayer = host.ToString();
             foreach (var op in players)

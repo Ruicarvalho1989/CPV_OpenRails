@@ -28,6 +28,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Windows.Forms;
+using ORTS.Settings;
 
 namespace Launcher
 {
@@ -72,6 +73,30 @@ namespace Launcher
                 runStart.Environment["CPV_ROLE"] = "server";
                 runStart.Arguments = "-multiplayerserver -timetable " + Quote(selection.TimetableFile) + " " +
                     Quote(selection.Timetable + ":" + selection.SeedTrain) + " 0 1 0";
+                Process.Start(runStart);
+                return;
+            }
+
+            if (selection.Role == CPVirtualRole.Driver)
+            {
+                // A driver selects a timetable service in the CP Virtual lobby;
+                // open the multiplayer client directly in that cab instead of
+                // making the operator repeat the selection in Menu.exe.
+                var settings = new UserSettings(new string[0]);
+                settings.Multiplayer_Host = selection.Host;
+                settings.Multiplayer_Port = 30000;
+                settings.Save();
+
+                CPVirtualLobby.SaveSelection(selection);
+                var runStart = new ProcessStartInfo(Path.Combine(path, "RunActivity.exe"));
+                runStart.UseShellExecute = false;
+                runStart.WorkingDirectory = path;
+                runStart.Environment["CPV_ROLE"] = "driver";
+                runStart.Environment["CPV_HOST"] = selection.Host ?? String.Empty;
+                runStart.Environment["CPV_SERVICE"] = selection.Service ?? String.Empty;
+                runStart.Arguments = "-multiplayerclient -timetable " + Quote(selection.TimetableFile) + " " +
+                    Quote(selection.Timetable + ":" + selection.SeedTrain) + " " +
+                    selection.Day + " " + selection.Season + " " + selection.Weather;
                 Process.Start(runStart);
                 return;
             }

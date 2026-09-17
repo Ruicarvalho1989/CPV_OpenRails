@@ -30,6 +30,9 @@ namespace Launcher
         public string TimetableFile;
         public string Timetable;
         public string SeedTrain;
+        public int Day;
+        public int Season;
+        public int Weather;
         public bool RealisticVisuals;
     }
 
@@ -154,6 +157,19 @@ namespace Launcher
             values.TryGetValue("service", out service);
             values.TryGetValue("post", out post);
             values.TryGetValue("visual", out visual);
+            if (role == CPVirtualRole.Driver)
+            {
+                var driverService = FindDriverService(service);
+                if (driverService == null)
+                    return null;
+
+                driverService.Role = role;
+                driverService.Host = CleanHost(host);
+                driverService.Service = (service ?? String.Empty).Trim();
+                driverService.RealisticVisuals = String.Equals(visual, "realistic", StringComparison.OrdinalIgnoreCase);
+                return driverService;
+            }
+
             return new CPVirtualLaunchSelection
             {
                 Role = role,
@@ -205,17 +221,23 @@ namespace Launcher
                 foreach (var route in Route.GetRoutes(folder))
                 foreach (var timetableSet in TimetableInfo.GetTimetableInfo(folder, route))
                 foreach (var timetable in timetableSet.ORTTList)
-                foreach (var train in timetable.Trains)
                 {
+                    if (timetable.Trains.Count == 0)
+                        continue;
                     var profileKey = (++key).ToString();
                     hostProfiles[profileKey] = new CPVirtualLaunchSelection
                     {
                         Role = CPVirtualRole.Server,
                         TimetableFile = timetableSet.fileName,
                         Timetable = timetable.Description,
-                        SeedTrain = train.Train
+                        // The timetable reader still requires a selected train
+                        // syntactically. The dedicated server converts it to AI.
+                        SeedTrain = timetable.Trains[0].Train,
+                        Day = timetableSet.Day,
+                        Season = timetableSet.Season,
+                        Weather = timetableSet.Weather
                     };
-                    var label = route.Name + " · " + timetable.Description + " · " + train.Train;
+                    var label = route.Name + " · " + timetable.Description;
                     html.Append("<option value='").Append(profileKey).Append("'>")
                         .Append(WebUtility.HtmlEncode(label)).Append("</option>");
                 }
@@ -228,6 +250,35 @@ namespace Launcher
             if (html.Length == 0)
                 return "<option value=''>Nenhum horário Open Rails encontrado</option>";
             return html.ToString();
+        }
+
+        private CPVirtualLaunchSelection FindDriverService(string service)
+        {
+            service = (service ?? String.Empty).Trim();
+            if (String.IsNullOrEmpty(service))
+                return null;
+
+            var settings = new UserSettings(new string[0]);
+            foreach (var folder in Folder.GetFolders(settings))
+            foreach (var route in Route.GetRoutes(folder))
+            foreach (var timetableSet in TimetableInfo.GetTimetableInfo(folder, route))
+            foreach (var timetable in timetableSet.ORTTList)
+            foreach (var train in timetable.Trains)
+            {
+                if (!String.Equals(train.Train, service, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                return new CPVirtualLaunchSelection
+                {
+                    TimetableFile = timetableSet.fileName,
+                    Timetable = timetable.Description,
+                    SeedTrain = train.Train,
+                    Day = timetableSet.Day,
+                    Season = timetableSet.Season,
+                    Weather = timetableSet.Weather
+                };
+            }
+            return null;
         }
 
         private static Dictionary<string, string> ParseQuery(string query)

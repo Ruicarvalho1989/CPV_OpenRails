@@ -153,16 +153,24 @@ namespace Orts.MultiPlayer
             if (MPManager.IsServer() && String.Equals(Environment.GetEnvironmentVariable("CPV_ROLE"), "server", StringComparison.OrdinalIgnoreCase))
             {
                 Train assignedTrain = MPManager.Simulator.Trains.GetTrainByNumber(player.num);
-                if (assignedTrain != null && !findTrain(assignedTrain))
+                if (assignedTrain == null)
                 {
-                    assignedTrain.TrainType = Train.TRAINTYPE.REMOTE;
-                    p.Username = player.user;
-                    p.Train = assignedTrain;
-                    Players.Add(player.user, p);
-                    MPManager.Instance().AddOrRemoveTrain(assignedTrain, true);
-                    Trace.TraceInformation("CP Virtual: service {0} assigned to {1}", player.num, player.user);
-                    return;
+                    p.Send(new MSGMessage(player.user, "Error", "Serviço " + player.num + " não existe ou ainda não está disponível.").ToString());
+                    throw new InvalidOperationException("CP Virtual service not available: " + player.num);
                 }
+                if (findTrain(assignedTrain))
+                {
+                    p.Send(new MSGMessage(player.user, "Error", "Serviço " + player.num + " ocupado por outro maquinista.").ToString());
+                    throw new InvalidOperationException("CP Virtual service already occupied: " + player.num);
+                }
+
+                assignedTrain.TrainType = Train.TRAINTYPE.REMOTE;
+                p.Username = player.user;
+                p.Train = assignedTrain;
+                Players.Add(player.user, p);
+                MPManager.Instance().AddOrRemoveTrain(assignedTrain, true);
+                Trace.TraceInformation("CP Virtual: service {0} assigned to {1}", player.num, player.user);
+                return;
             }
 
             Train train = new Train(MPManager.Simulator);

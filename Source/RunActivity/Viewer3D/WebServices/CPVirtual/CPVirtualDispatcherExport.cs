@@ -8,6 +8,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using Newtonsoft.Json;
@@ -89,7 +90,10 @@ namespace Orts.Viewer3D.WebServices
     public sealed class CPVirtualTrainState
     {
         public int Number;
+        public int ServiceNumber;
         public string Name;
+        public bool Occupied;
+        public string DriverName;
         public float SpeedKmh;
         public string ControlMode;
         public int FrontCircuit;
@@ -419,10 +423,15 @@ namespace Orts.Viewer3D.WebServices
 
                 CPVirtualAIOrderState aiOrder;
                 aiOrders.TryGetValue(train.Number, out aiOrder);
+                var onlineDriver = MPManager.OnlineTrains.Players.Values.FirstOrDefault(player => player.Train == train);
+                var timetableTrain = train as TTTrain;
                 output.Trains.Add(new CPVirtualTrainState
                 {
                     Number = train.Number,
+                    ServiceNumber = timetableTrain != null && timetableTrain.OrgAINumber >= 0 ? timetableTrain.OrgAINumber : train.Number,
                     Name = train.Name,
+                    Occupied = onlineDriver != null,
+                    DriverName = onlineDriver == null ? String.Empty : onlineDriver.Username,
                     SpeedKmh = train.SpeedMpS * 3.6f,
                     ControlMode = train.ControlMode.ToString(),
                     FrontCircuit = train.PresentPosition[0].TCSectionIndex,

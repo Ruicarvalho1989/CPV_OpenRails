@@ -85,6 +85,7 @@ namespace Launcher
                 var settings = new UserSettings(new string[0]);
                 settings.Multiplayer_Host = selection.Host;
                 settings.Multiplayer_Port = 30000;
+                settings.Multiplayer_User = selection.OperatorName;
                 settings.Save();
 
                 CPVirtualLobby.SaveSelection(selection);
@@ -94,6 +95,7 @@ namespace Launcher
                 runStart.Environment["CPV_ROLE"] = "driver";
                 runStart.Environment["CPV_HOST"] = selection.Host ?? String.Empty;
                 runStart.Environment["CPV_SERVICE"] = selection.Service ?? String.Empty;
+                runStart.Environment["CPV_OPERATOR"] = selection.OperatorName ?? String.Empty;
                 runStart.Arguments = "-multiplayerclient -timetable " + Quote(selection.TimetableFile) + " " +
                     Quote(selection.Timetable + ":" + selection.SeedTrain) + " " +
                     selection.Day + " " + selection.Season + " " + selection.Weather;

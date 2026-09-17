@@ -6,8 +6,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
+using System.Net.Http;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using ORTS.Menu;
 using ORTS.Settings;
 
@@ -25,6 +28,7 @@ namespace Launcher
     {
         public CPVirtualRole Role;
         public string Host;
+        public string OperatorName;
         public string Service;
         public string Post;
         public string TimetableFile;
@@ -47,6 +51,7 @@ namespace Launcher
         private readonly string programPath;
         private readonly Dictionary<string, CPVirtualLaunchSelection> hostProfiles = new Dictionary<string, CPVirtualLaunchSelection>();
         private TcpListener listener;
+        private string selectionError;
 
         public CPVirtualLobby(string programPath)
         {
@@ -85,12 +90,46 @@ namespace Launcher
                     var requestTarget = parts.Length > 1 ? parts[1] : "/";
                     var uri = new Uri("http://localhost:" + Port + requestTarget);
 
+                    if (uri.AbsolutePath.Equals("/driver", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var values = ParseQuery(uri.Query);
+                        string host;
+                        string operatorName;
+                        string visual;
+                        values.TryGetValue("host", out host);
+                        values.TryGetValue("name", out operatorName);
+                        values.TryGetValue("visual", out visual);
+                        host = CleanHost(host);
+                        operatorName = NormalizeOperatorName(operatorName);
+                        if (String.IsNullOrEmpty(host) || String.IsNullOrEmpty(operatorName))
+                        {
+                            WriteText(stream, "400 Bad Request", "Indica o servidor e um nome válido de 4 a 10 caracteres.");
+                            continue;
+                        }
+                        WriteHtml(stream, DriverRadioPage(host, operatorName, visual, String.Empty));
+                        continue;
+                    }
+
                     if (uri.AbsolutePath.Equals("/select", StringComparison.OrdinalIgnoreCase))
                     {
                         var selection = ReadSelection(uri.Query);
                         if (selection == null)
                         {
-                            WriteText(stream, "400 Bad Request", "Escolha inválida.");
+                            var values = ParseQuery(uri.Query);
+                            string roleValue;
+                            values.TryGetValue("role", out roleValue);
+                            if (String.Equals(roleValue, "driver", StringComparison.OrdinalIgnoreCase))
+                            {
+                                string host;
+                                string operatorName;
+                                string visual;
+                                values.TryGetValue("host", out host);
+                                values.TryGetValue("name", out operatorName);
+                                values.TryGetValue("visual", out visual);
+                                WriteHtml(stream, DriverRadioPage(CleanHost(host), NormalizeOperatorName(operatorName), visual, selectionError ?? "Serviço inválido."));
+                            }
+                            else
+                                WriteText(stream, "400 Bad Request", selectionError ?? "Escolha inválida.");
                             continue;
                         }
 
@@ -98,7 +137,7 @@ namespace Launcher
                         {
                             SaveSelection(selection);
                             var host = String.IsNullOrWhiteSpace(selection.Host) ? "localhost" : selection.Host;
-                            WriteRedirect(stream, "http://" + host + ":2150/CPVirtual/posto.html");
+                            WriteRedirect(stream, "http://" + host + ":2150/CPVirtual/?role=dispatcher&name=" + Uri.EscapeDataString(selection.OperatorName ?? String.Empty));
                             return selection;
                         }
 
@@ -128,6 +167,7 @@ namespace Launcher
 
         private CPVirtualLaunchSelection ReadSelection(string query)
         {
+            selectionError = null;
             var values = ParseQuery(query);
             string roleValue;
             if (!values.TryGetValue("role", out roleValue))
@@ -151,20 +191,39 @@ namespace Launcher
             }
 
             string host;
+            string operatorName;
             string service;
             string post;
             values.TryGetValue("host", out host);
+            values.TryGetValue("name", out operatorName);
             values.TryGetValue("service", out service);
             values.TryGetValue("post", out post);
             values.TryGetValue("visual", out visual);
+            operatorName = NormalizeOperatorName(operatorName);
+            if ((role == CPVirtualRole.Driver || role == CPVirtualRole.Dispatcher) && String.IsNullOrEmpty(operatorName))
+            {
+                selectionError = "Indica um nome ou indicativo válido.";
+                return null;
+            }
             if (role == CPVirtualRole.Driver)
             {
                 var driverService = FindDriverService(service);
                 if (driverService == null)
+                {
+                    selectionError = "O serviço " + WebUtility.HtmlEncode(service) + " não existe nos horários instalados neste computador.";
                     return null;
+                }
+
+                string availabilityError;
+                if (!ServiceIsAvailable(CleanHost(host), service, out availabilityError))
+                {
+                    selectionError = availabilityError;
+                    return null;
+                }
 
                 driverService.Role = role;
                 driverService.Host = CleanHost(host);
+                driverService.OperatorName = operatorName;
                 driverService.Service = (service ?? String.Empty).Trim();
                 driverService.RealisticVisuals = String.Equals(visual, "realistic", StringComparison.OrdinalIgnoreCase);
                 return driverService;
@@ -174,10 +233,84 @@ namespace Launcher
             {
                 Role = role,
                 Host = CleanHost(host),
+                OperatorName = operatorName,
                 Service = (service ?? String.Empty).Trim(),
                 Post = (post ?? String.Empty).Trim(),
                 RealisticVisuals = String.Equals(visual, "realistic", StringComparison.OrdinalIgnoreCase)
             };
+        }
+
+        private static bool ServiceIsAvailable(string host, string service, out string error)
+        {
+            error = String.Empty;
+            try
+            {
+                using (var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) })
+                using (var response = client.GetAsync("http://" + host + ":2150/API/CPV/STATE").GetAwaiter().GetResult())
+                {
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        error = "O servidor CP Virtual não respondeu. Confirma o IP e a porta 2150.";
+                        return false;
+                    }
+                    var json = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                    using (var document = JsonDocument.Parse(json))
+                    {
+                        JsonElement trains;
+                        if (!document.RootElement.TryGetProperty("Trains", out trains))
+                        {
+                            error = "O servidor não devolveu a lista de serviços.";
+                            return false;
+                        }
+                        foreach (var train in trains.EnumerateArray())
+                        {
+                            var number = train.TryGetProperty("ServiceNumber", out var serviceNumber) ? serviceNumber.GetInt32() : train.GetProperty("Number").GetInt32();
+                            var name = train.TryGetProperty("Name", out var trainName) ? trainName.GetString() : String.Empty;
+                            if (!String.Equals(number.ToString(), service, StringComparison.OrdinalIgnoreCase) && !String.Equals(name, service, StringComparison.OrdinalIgnoreCase))
+                                continue;
+                            var occupied = train.TryGetProperty("Occupied", out var occupiedValue) && occupiedValue.GetBoolean();
+                            if (occupied)
+                            {
+                                var driver = train.TryGetProperty("DriverName", out var driverName) ? driverName.GetString() : String.Empty;
+                                error = "Serviço ocupado" + (String.IsNullOrWhiteSpace(driver) ? ". Escolhe outro serviço." : " por " + WebUtility.HtmlEncode(driver) + ". Escolhe outro serviço.");
+                                return false;
+                            }
+                            return true;
+                        }
+                    }
+                }
+                error = "O serviço " + WebUtility.HtmlEncode(service) + " não está ativo neste servidor.";
+                return false;
+            }
+            catch (Exception exception)
+            {
+                Trace.WriteLine("CP Virtual service availability: " + exception);
+                error = "Não foi possível contactar o servidor em " + WebUtility.HtmlEncode(host) + ":2150.";
+                return false;
+            }
+        }
+
+        private static string NormalizeOperatorName(string value)
+        {
+            value = Regex.Replace((value ?? String.Empty).Trim(), "[^A-Za-z0-9_]", String.Empty);
+            if (String.IsNullOrEmpty(value))
+                return String.Empty;
+            if (Char.IsDigit(value[0]))
+                value = "M" + value;
+            if (value.Length > 10)
+                value = value.Substring(0, 10);
+            while (value.Length < 4)
+                value += "_";
+            return value;
+        }
+
+        private static string DriverRadioPage(string host, string operatorName, string visual, string error)
+        {
+            return "<!doctype html><html lang='pt'><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>" +
+                "<title>CP Virtual · Rádio Solo–Comboio</title><style>body{margin:0;background:#081014;color:#edf2f4;font:15px Segoe UI,Arial}header{padding:16px 24px;background:#182126;border-bottom:3px solid #e12830}header b{color:#e12830;font-size:23px;font-style:italic}.radio{max-width:720px;margin:45px auto;background:#748188;border:5px solid #111;border-radius:28px;padding:25px;color:#101619;box-shadow:0 15px 40px #0008}.screen{background:#365c4d;border:5px solid #0a1012;border-radius:8px;padding:18px;color:#78eca0;font:20px Consolas;margin-bottom:20px}.keys{background:#657278;border:4px solid #182126;border-radius:22px;padding:22px}label{font-weight:800}input{box-sizing:border-box;width:100%;margin:8px 0 15px;padding:13px;background:#10191d;color:white;border:1px solid #39474e;border-radius:5px;font-size:18px}button{width:100%;padding:13px;border:2px solid #4f4b38;border-radius:7px;background:#e7c55d;font-weight:900;cursor:pointer}.error{margin:0 0 15px;padding:10px;background:#4b171b;color:#ffc2c5;border-radius:5px}.hint{font-size:12px;color:#dfe7e9;margin-top:12px}</style>" +
+                "<header><b>CP</b> VIRTUAL · RÁDIO SOLO–COMBOIO</header><main class='radio'><div class='screen'>SERVIDOR " + WebUtility.HtmlEncode(host) + "<br>MAQUINISTA " + WebUtility.HtmlEncode(operatorName) + "<br>INTRODUZ O SERVIÇO</div><div class='keys'>" +
+                (String.IsNullOrEmpty(error) ? String.Empty : "<div class='error'>" + error + "</div>") +
+                "<form action='/select' method='get'><input type='hidden' name='role' value='driver'><input type='hidden' name='host' value='" + WebUtility.HtmlEncode(host) + "'><input type='hidden' name='name' value='" + WebUtility.HtmlEncode(operatorName) + "'><input type='hidden' name='visual' value='" + WebUtility.HtmlEncode(visual) + "'><label>CÓDIGO DO SERVIÇO</label><input name='service' required autofocus pattern='[A-Za-z0-9_-]+' placeholder='Ex.: 4333'><button type='submit'>CONFIRMAR E ABRIR O JOGO</button></form><div class='hint'>O servidor confirma se o serviço existe e está livre antes de iniciar o Open Rails.</div></div></main></html>";
         }
 
         /// <summary>
@@ -328,6 +461,7 @@ namespace Launcher
             {
                 "role=" + selection.Role.ToString().ToLowerInvariant(),
                 "host=" + (selection.Host ?? String.Empty),
+                "name=" + (selection.OperatorName ?? String.Empty),
                 "service=" + (selection.Service ?? String.Empty),
                 "post=" + (selection.Post ?? String.Empty),
                 "visual=" + (selection.RealisticVisuals ? "realistic" : String.Empty)

@@ -351,7 +351,7 @@ namespace Orts.Viewer3D.Processes
 
             if (Client != null)
             {
-                Client.Send((new MSGPlayer(UserName, Code, Simulator.conFileName, Simulator.patFileName, Simulator.Trains[0], 0, Simulator.Settings.AvatarURL)).ToString());
+                Client.Send((new MSGPlayer(UserName, Code, Simulator.conFileName, Simulator.patFileName, Simulator.Trains[0], CPVirtualRequestedTrainNumber(), Simulator.Settings.AvatarURL)).ToString());
                 // wait 5 seconds to see if you get a reply from server with updated position/consist data, else go on
                
                 System.Threading.Thread.Sleep(5000);
@@ -513,7 +513,7 @@ namespace Orts.Viewer3D.Processes
                         if (Acttype == "activity") Simulator.GetPathAndConsist();
                     if (Client != null)
                     {
-                        Client.Send((new MSGPlayer(UserName, Code, Simulator.conFileName, Simulator.patFileName, Simulator.Trains[0], 0, Simulator.Settings.AvatarURL)).ToString());
+                        Client.Send((new MSGPlayer(UserName, Code, Simulator.conFileName, Simulator.patFileName, Simulator.Trains[0], CPVirtualRequestedTrainNumber(), Simulator.Settings.AvatarURL)).ToString());
                     }
                     Viewer.Restore(inf);
 
@@ -558,6 +558,18 @@ namespace Orts.Viewer3D.Processes
 
                 Game.ReplaceState(new GameStateViewer3D(Viewer));
             }
+        }
+
+        static int CPVirtualRequestedTrainNumber()
+        {
+            string requestedService = Environment.GetEnvironmentVariable("CPV_SERVICE");
+            int requestedNumber;
+            if (String.Equals(Environment.GetEnvironmentVariable("CPV_ROLE"), "driver", StringComparison.OrdinalIgnoreCase) &&
+                Int32.TryParse(requestedService, out requestedNumber))
+                return requestedNumber;
+
+            var timetableTrain = Simulator?.Trains?[0] as TTTrain;
+            return timetableTrain != null && timetableTrain.OrgAINumber >= 0 ? timetableTrain.OrgAINumber : 0;
         }
 
         private static void ResumeEvaluation(BinaryReader infDbfEval)

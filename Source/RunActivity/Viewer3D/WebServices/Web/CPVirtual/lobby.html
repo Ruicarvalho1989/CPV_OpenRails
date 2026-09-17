@@ -31,7 +31,8 @@
       <input id="role" name="role" type="hidden">
       <label id="profileLabel">Horário da sessão<select name="profile">{{CPV_HOST_PROFILES}}</select></label>
       <label id="hostLabel">Servidor/IP<input id="host" name="host" placeholder="127.0.0.1"></label>
-      <label id="serviceLabel">Código do serviço<input name="service" required pattern="[A-Za-z0-9_-]+" placeholder="Ex.: 4333"></label>
+      <label id="nameLabel">Nome/indicativo<input id="operatorName" name="name" minlength="4" maxlength="10" pattern="[A-Za-z_][A-Za-z0-9_]{3,9}" placeholder="Ex.: Rui1989"></label>
+      <label id="serviceLabel">Código do serviço<input name="service" pattern="[A-Za-z0-9_-]+" placeholder="Ex.: 4333"></label>
       <label id="postLabel">Estação ou posto<input name="post" placeholder="Pesquisar depois no quadro"></label>
       <label class="visual"><input name="visual" value="realistic" type="checkbox"><span><b>Visual realista (teste)</b><br>Sombras 2K, maior distância de visão, 8x MSAA e brilho de sinais. Recomendado para RTX 3090; pode reduzir FPS.</span></label>
       <div class="actions"><a class="classic" href="/select?role=classic">Menu Open Rails</a><button class="primary" type="submit">Continuar</button></div>
@@ -40,15 +41,17 @@
   </main>
   <script>
     const form=document.querySelector('#choice'),role=document.querySelector('#role');
-    const service=document.querySelector('#serviceLabel'),post=document.querySelector('#postLabel'),host=document.querySelector('#hostLabel'),profile=document.querySelector('#profileLabel');
+    const service=document.querySelector('#serviceLabel'),post=document.querySelector('#postLabel'),host=document.querySelector('#hostLabel'),profile=document.querySelector('#profileLabel'),name=document.querySelector('#nameLabel');
     document.querySelectorAll('[data-role]').forEach(button=>button.addEventListener('click',()=>{
       document.querySelectorAll('[data-role]').forEach(x=>x.classList.remove('active'));button.classList.add('active');
       role.value=button.dataset.role;form.classList.add('active');
       host.style.display=button.dataset.role==='server'?'none':'block';
+      name.style.display=button.dataset.role==='server'?'none':'block';
       profile.style.display=button.dataset.role==='server'?'block':'none';
-      service.style.display=button.dataset.role==='driver'?'block':'none';
-      post.style.display=button.dataset.role==='dispatcher'?'block':'none';
-      document.querySelector('[name=service]').required=button.dataset.role==='driver';
+      service.style.display='none';
+      post.style.display='none';
+      document.querySelector('#operatorName').required=button.dataset.role!=='server';
+      form.action=button.dataset.role==='driver'?'/driver':'/select';
       document.querySelector('#host').value=button.dataset.role==='server'?'127.0.0.1':document.querySelector('#host').value;
     }));
   </script>

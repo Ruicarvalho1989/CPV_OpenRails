@@ -18,6 +18,7 @@ using Orts.MultiPlayer;
 using Orts.Simulation;
 using Orts.Simulation.AIs;
 using Orts.Simulation.Signalling;
+using Orts.Simulation.Timetables;
 
 namespace Orts.Viewer3D.WebServices
 {

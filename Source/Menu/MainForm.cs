@@ -148,6 +148,22 @@ namespace Menu
  
         }
 
+        // The CP Virtual browser lobby starts Menu.exe for drivers. The old
+        // launcher passed the host only as an environment variable, so Menu
+        // stayed in its ordinary single-player state.
+        void ApplyCPVirtualLaunchSelection()
+        {
+            if (!String.Equals(Environment.GetEnvironmentVariable("CPV_ROLE"), "driver", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            var host = (Environment.GetEnvironmentVariable("CPV_HOST") ?? String.Empty).Trim();
+            if (!String.IsNullOrEmpty(host))
+                Settings.Multiplayer_Host = host;
+            Settings.Multiplayer_Port = 30000;
+            radioButtonMPClient.Checked = true;
+            textBoxMPHost.Text = Settings.Multiplayer_Host + ":" + Settings.Multiplayer_Port;
+        }
+
         void MainForm_Shown(object sender, EventArgs e)
         {
             var options = Environment.GetCommandLineArgs().Where(a => (a.StartsWith("-") || a.StartsWith("/"))).Select(a => a.Substring(1));
@@ -157,6 +173,7 @@ namespace Menu
             Cursor = Cursors.Default;
 
             LoadOptions();
+            ApplyCPVirtualLaunchSelection();
             LoadLanguage();
 
             if (!Initialized)

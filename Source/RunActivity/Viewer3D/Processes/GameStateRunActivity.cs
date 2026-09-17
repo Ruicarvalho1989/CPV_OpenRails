@@ -24,6 +24,7 @@ using Orts.Common;
 using Orts.Formats.Msts;
 using Orts.MultiPlayer;
 using Orts.Simulation;
+using Orts.Simulation.Timetables;
 using Orts.Viewer3D.Debugging;
 using ORTS.Common;
 using ORTS.Settings;

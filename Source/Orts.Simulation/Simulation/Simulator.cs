@@ -508,17 +508,7 @@ namespace Orts.Simulation
             // be taken over later by a remote multiplayer driver.
             bool dedicatedCPVirtualServer = Settings.MultiplayerServer &&
                 String.Equals(Environment.GetEnvironmentVariable("CPV_ROLE"), "server", StringComparison.OrdinalIgnoreCase);
-            if (dedicatedCPVirtualServer)
-            {
-                Trains.Remove(playerTTTrain);
-                PlayerLocomotive = null;
-                playerTTTrain.TrainType = Train.TRAINTYPE.AI_NOTSTARTED;
-                AI = new AI(this, allTrains, ref ClockTime, -1, TTTrain.FormCommand.None, null, cancellation);
-            }
-            else
-            {
-                AI = new AI(this, allTrains, ref ClockTime, playerTTTrain.FormedOf, playerTTTrain.FormedOfType, playerTTTrain, cancellation);
-            }
+            AI = new AI(this, allTrains, ref ClockTime, playerTTTrain.FormedOf, playerTTTrain.FormedOfType, playerTTTrain, cancellation);
 
             Season = (SeasonType)int.Parse(arguments[3]);
             WeatherType = (WeatherType)int.Parse(arguments[4]);
@@ -529,13 +519,22 @@ namespace Orts.Simulation
                 UserWeatherFile = arguments[5];
             }
 
-            if (!dedicatedCPVirtualServer && playerTTTrain != null)
+            if (playerTTTrain != null)
             {
                 playerTTTrain.CalculatePositionOfCars(); // calculate position of player train cars
                 playerTTTrain.PostInit();               // place player train after pre-running of AI trains
                 if (!TrainDictionary.ContainsKey(playerTTTrain.Number)) TrainDictionary.Add(playerTTTrain.Number, playerTTTrain);
                 if (!NameDictionary.ContainsKey(playerTTTrain.Name.ToLower())) NameDictionary.Add(playerTTTrain.Name.ToLower(), playerTTTrain);
 
+                // Run the host's technical train under AI control. Open Rails' viewer
+                // still needs one train to own the camera and initialise the world;
+                // removing it leaves Trains empty and crashes InitialPlayerLocomotive.
+                // It is not locally driven and can later be handed to a remote driver.
+                if (dedicatedCPVirtualServer)
+                {
+                    playerTTTrain.Autopilot = true;
+                    playerTTTrain.TrainType = Train.TRAINTYPE.AI_PLAYERHOSTING;
+                }
             }
             IsAutopilotMode = true;
         }
